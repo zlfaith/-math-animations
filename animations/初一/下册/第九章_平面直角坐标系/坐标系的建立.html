@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坐标系的建立</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .intro {
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .coordinate-system {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        
+        .axis {
+            position: absolute;
+            background-color: #333;
+        }
+        
+        .x-axis {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            left: 0;
+        }
+        
+        .y-axis {
+            height: 100%;
+            width: 2px;
+            left: 50%;
+            top: 0;
+        }
+        
+        .origin {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #f44336;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .origin-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(10px, 10px);
+            font-weight: bold;
+        }
+        
+        .x-label {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .y-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .point-label {
+            position: absolute;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .input-group {
+            margin: 10px 0;
+        }
+        
+        label {
+            display: inline-block;
+            width: 100px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        
+        input {
+            padding: 8px;
+            width: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff3e0;
+            border-radius: 8px;
+        }
+        
+        .instructions h3 {
+            color: #ff9800;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>平面直角坐标系的建立</h1>
+        
+        <div class="intro">
+            <h2>什么是平面直角坐标系？</h2>
+            <p>平面直角坐标系是由两条互相垂直的数轴组成的，它们的交点称为原点。水平的数轴称为x轴（或横轴），向右为正方向；垂直的数轴称为y轴（或纵轴），向上为正方向。</p>
+        </div>
+        
+        <div class="coordinate-system" id="coordinate-system">
+            <div class="x-axis"></div>
+            <div class="y-axis"></div>
+            <div class="origin"></div>
+            <div class="origin-label">O</div>
+            <div class="x-label">x</div>
+            <div class="y-label">y</div>
+        </div>
+        
+        <div class="controls">
+            <h3>添加点</h3>
+            <div class="input-group">
+                <label for="x-coord">x坐标：</label>
+                <input type="number" id="x-coord" value="2">
+            </div>
+            <div class="input-group">
+                <label for="y-coord">y坐标：</label>
+                <input type="number" id="y-coord" value="3">
+            </div>
+            <button onclick="addPoint()">添加点</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>操作说明</h3>
+            <ol>
+                <li>在输入框中输入点的x和y坐标</li>
+                <li>点击"添加点"按钮，在坐标系中显示该点</li>
+                <li>观察点在坐标系中的位置</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        function addPoint() {
+            const x = parseFloat(document.getElementById('x-coord').value);
+            const y = parseFloat(document.getElementById('y-coord').value);
+            
+            const coordinateSystem = document.getElementById('coordinate-system');
+            const systemWidth = coordinateSystem.offsetWidth;
+            const systemHeight = coordinateSystem.offsetHeight;
+            
+            // 计算点的位置（以原点为中心）
+            const scale = 50; // 缩放比例
+            const pointX = systemWidth / 2 + x * scale;
+            const pointY = systemHeight / 2 - y * scale;
+            
+            // 创建点元素
+            const point = document.createElement('div');
+            point.className = 'point';
+            point.style.left = `${pointX}px`;
+            point.style.top = `${pointY}px`;
+            
+            // 创建点标签
+            const pointLabel = document.createElement('div');
+            pointLabel.className = 'point-label';
+            pointLabel.textContent = `(${x}, ${y})`;
+            pointLabel.style.left = `${pointX + 10}px`;
+            pointLabel.style.top = `${pointY - 10}px`;
+            
+            // 添加到坐标系
+            coordinateSystem.appendChild(point);
+            coordinateSystem.appendChild(pointLabel);
+        }
+        
+        // 添加几个示例点
+        window.onload = function() {
+            // 示例点：(1, 1)
+            document.getElementById('x-coord').value = 1;
+            document.getElementById('y-coord').value = 1;
+            addPoint();
+            
+            // 示例点：(-2, 3)
+            document.getElementById('x-coord').value = -2;
+            document.getElementById('y-coord').value = 3;
+            addPoint();
+            
+            // 示例点：(3, -2)
+            document.getElementById('x-coord').value = 3;
+            document.getElementById('y-coord').value = -2;
+            addPoint();
+        };
+    </script>
+</body>
+</html>

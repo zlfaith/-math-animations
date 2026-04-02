@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四边形的不稳定性</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #canvas-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background-color: white;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .instructions {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .instructions h2 {
+            color: #333;
+        }
+        .instructions p {
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>四边形的不稳定性</h1>
+    <div id="canvas-container">
+        <canvas id="canvas" width="600" height="400"></canvas>
+    </div>
+    <div class="controls">
+        <button id="reset-btn">重置</button>
+        <button id="animate-btn">动画演示</button>
+    </div>
+    <div class="instructions">
+        <h2>操作说明</h2>
+        <p>1. 点击并拖动四边形的顶点来改变其形状</p>
+        <p>2. 观察四边形如何在保持边长不变的情况下改变形状</p>
+        <p>3. 点击"重置"按钮恢复初始形状</p>
+        <p>4. 点击"动画演示"按钮观看四边形的变形动画</p>
+        <h2>数学原理</h2>
+        <p>四边形具有不稳定性，这意味着在边长不变的情况下，四边形可以改变形状。这是因为四边形的内角和虽然固定为360度，但各个内角的大小可以变化，从而导致四边形的形状发生改变。</p>
+        <p>相比之下，三角形具有稳定性，一旦三条边的长度确定，三角形的形状就唯一确定了。</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const resetBtn = document.getElementById('reset-btn');
+        const animateBtn = document.getElementById('animate-btn');
+        
+        // 四边形的四个顶点
+        let points = [
+            { x: 100, y: 100 },
+            { x: 300, y: 100 },
+            { x: 350, y: 300 },
+            { x: 150, y: 300 }
+        ];
+        
+        let isDragging = false;
+        let draggedPoint = null;
+        let animationId = null;
+        let animationStep = 0;
+        
+        // 绘制四边形
+        function drawQuadrilateral() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制四边形
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 绘制顶点
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#4CAF50';
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.stroke();
+            });
+        }
+        
+        // 重置四边形
+        function resetQuadrilateral() {
+            points = [
+                { x: 100, y: 100 },
+                { x: 300, y: 100 },
+                { x: 350, y: 300 },
+                { x: 150, y: 300 }
+            ];
+            drawQuadrilateral();
+        }
+        
+        // 动画演示
+        function animateQuadrilateral() {
+            if (animationStep < 100) {
+                const angle = (animationStep / 100) * Math.PI;
+                points[2].x = 300 + 50 * Math.cos(angle);
+                points[2].y = 100 + 200 * Math.sin(angle);
+                points[3].x = 100 + 50 * Math.cos(angle);
+                points[3].y = 100 + 200 * Math.sin(angle);
+                drawQuadrilateral();
+                animationStep++;
+                animationId = requestAnimationFrame(animateQuadrilateral);
+            } else {
+                animationStep = 0;
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        // 鼠标按下事件
+        canvas.addEventListener('mousedown', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // 检查是否点击了顶点
+            for (let i = 0; i < points.length; i++) {
+                const dx = points[i].x - mouseX;
+                const dy = points[i].y - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 10) {
+                    isDragging = true;
+                    draggedPoint = i;
+                    break;
+                }
+            }
+        });
+        
+        // 鼠标移动事件
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                points[draggedPoint].x = e.clientX - rect.left;
+                points[draggedPoint].y = e.clientY - rect.top;
+                drawQuadrilateral();
+            }
+        });
+        
+        // 鼠标释放事件
+        canvas.addEventListener('mouseup', function() {
+            isDragging = false;
+            draggedPoint = null;
+        });
+        
+        // 鼠标离开事件
+        canvas.addEventListener('mouseleave', function() {
+            isDragging = false;
+            draggedPoint = null;
+        });
+        
+        // 按钮点击事件
+        resetBtn.addEventListener('click', resetQuadrilateral);
+        animateBtn.addEventListener('click', function() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                animationStep = 0;
+            }
+            animateQuadrilateral();
+        });
+        
+        // 初始化
+        drawQuadrilateral();
+    </script>
+</body>
+</html>

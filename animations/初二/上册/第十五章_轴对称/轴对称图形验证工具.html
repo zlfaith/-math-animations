@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>轴对称图形验证工具 · 支持电子白板触控</title>
+  <style>
+    :root {
+      --primary: #4361ee;
+      --success: #06d6a0;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --gray: #adb5bd;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      color: var(--dark);
+      line-height: 1.6;
+      padding: 16px;
+      min-height: 100vh;
+      touch-action: none; /* 关键：禁止浏览器默认触控行为（如双指缩放、滚动） */
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 16px 0;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      color: #6c757d;
+      font-size: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-bottom: 24px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .upload-area {
+      border: 2px dashed var(--gray);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #fafbff;
+    }
+
+    .upload-area:hover {
+      border-color: var(--primary);
+      background: #f0f4ff;
+    }
+
+    .upload-area p {
+      margin-top: 12px;
+      color: #6c757d;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    .slider-container {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #e9ecef;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(67, 97, 238, 0.4);
+    }
+
+    .axis-info {
+      background: #eef4ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary);
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .canvas-container {
+      position: relative;
+      margin-top: 16px;
+      overflow: hidden;
+      border-radius: 12px;
+      background: white;
+      box-shadow: inset 0 0 0 1px #e9ecef;
+      cursor: col-resize;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .axis-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--success);
+      box-shadow: 0 0 0 2px rgba(6, 214, 160, 0.3);
+      cursor: col-resize;
+      z-index: 10;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .axis-line:hover {
+      box-shadow: 0 0 0 3px rgba(6, 214, 160, 0.5);
+    }
+
+    .instructions {
+      background: #f8fdff;
+      border-left: 4px solid var(--success);
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 16px;
+      font-size: 0.95rem;
+    }
+
+    .instructions h3 {
+      margin-bottom: 8px;
+      color: var(--success);
+    }
+
+    .instructions ul {
+      padding-left: 20px;
+    }
+
+    .instructions li {
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .axis-info {
+        order: -1;
+        align-self: center;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>轴对称图形验证工具</h1>
+      <p class="subtitle">支持鼠标、触控笔、手指操作 · 完美适配电子白板</p>
+    </header>
+
+    <div class="card">
+      <div class="upload-area" id="dropZone">
+        <p>📁 点击或拖拽图片到此处上传</p>
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+
+      <div class="instructions">
+        <h3>💡 使用说明</h3>
+        <ul>
+          <li>上传图片后，可通过<strong>滑块</strong>或<strong>直接拖动绿色对称轴线</strong>调整位置</li>
+          <li>支持<strong>鼠标、触控笔、手指</strong>操作，适用于教室电子白板</li>
+          <li>观察翻折部分是否与左侧完全重合，判断是否为轴对称图形</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" id="resultSection" style="display: none;">
+      <div class="controls">
+        <div class="slider-container">
+          <label for="axisSlider">调整对称轴位置</label>
+          <input type="range" id="axisSlider" min="10" max="90" value="50" step="0.1" />
+        </div>
+        <div class="axis-info" id="axisValue">50%</div>
+      </div>
+
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="displayCanvas"></canvas>
+        <div class="axis-line" id="axisLine"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../../../frontend/js/notification.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const resultSection = document.getElementById('resultSection');
+    const displayCanvas = document.getElementById('displayCanvas');
+    const ctx = displayCanvas.getContext('2d');
+    const axisSlider = document.getElementById('axisSlider');
+    const axisValue = document.getElementById('axisValue');
+    const axisLine = document.getElementById('axisLine');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    let currentImage = null;
+    let axisPercent = 50;
+    let isDragging = false;
+
+    // 获取事件的 clientX（兼容鼠标和触摸）
+    function getClientX(e) {
+      if (e.type.startsWith('touch')) {
+        return e.touches[0].clientX;
+      } else {
+        return e.clientX;
+      }
+    }
+
+    // 处理文件上传
+    function handleFile(file) {
+      if (!file.type.match('image.*')) {
+        showMessage('请上传图片文件！');
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        currentImage = img;
+        resultSection.style.display = 'block';
+        axisPercent = 50;
+        axisSlider.value = 50;
+        updateAxisDisplay();
+        render();
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    // 上传区域点击
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    // 拖拽上传（主要针对桌面）
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.style.borderColor = '#4361ee';
+        dropZone.style.backgroundColor = '#e6eeff';
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.style.borderColor = '#adb5bd';
+        dropZone.style.backgroundColor = '#fafbff';
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    // 滑块控制
+    axisSlider.addEventListener('input', () => {
+      axisPercent = parseFloat(axisSlider.value);
+      updateAxisDisplay();
+      render();
+    });
+
+    function updateAxisDisplay() {
+      axisValue.textContent = `${axisPercent.toFixed(1)}%`;
+    }
+
+    // === 关键：统一处理鼠标和触摸拖拽 ===
+    function startDrag(e) {
+      if (e.type === 'mousedown' || e.type === 'touchstart') {
+        isDragging = true;
+        e.preventDefault(); // 阻止拖拽图片等默认行为
+      }
+    }
+
+    function doDrag(e) {
+      if (!isDragging || !currentImage) return;
+      e.preventDefault();
+      const rect = canvasContainer.getBoundingClientRect();
+      const x = getClientX(e) - rect.left;
+      let percent = (x / rect.width) * 100;
+      percent = Math.min(95, Math.max(5, percent)); // 限制范围
+      axisPercent = percent;
+      axisSlider.value = axisPercent;
+      updateAxisDisplay();
+      render();
+    }
+
+    function endDrag() {
+      isDragging = false;
+    }
+
+    // 绑定鼠标事件
+    axisLine.addEventListener('mousedown', startDrag);
+    canvasContainer.addEventListener('mousemove', doDrag);
+    window.addEventListener('mouseup', endDrag);
+
+    // 绑定触摸事件（支持电子白板/平板/手机）
+    axisLine.addEventListener('touchstart', startDrag, { passive: false });
+    canvasContainer.addEventListener('touchmove', doDrag, { passive: false });
+    window.addEventListener('touchend', endDrag);
+
+    // 渲染函数
+    function render() {
+      if (!currentImage) return;
+
+      const maxWidth = Math.min(window.innerWidth - 40, 900);
+      const scale = maxWidth / currentImage.width;
+      const canvasWidth = currentImage.width * scale;
+      const canvasHeight = currentImage.height * scale;
+
+      displayCanvas.width = canvasWidth;
+      displayCanvas.height = canvasHeight;
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      // 背景：原始图（半透明）
+      ctx.globalAlpha = 0.3;
+      ctx.drawImage(currentImage, 0, 0, canvasWidth, canvasHeight);
+      ctx.globalAlpha = 1.0;
+
+      const axisX = (axisPercent / 100) * canvasWidth;
+
+      // 左侧原始部分
+      ctx.drawImage(
+        currentImage,
+        0, 0, axisX / scale, currentImage.height,
+        0, 0, axisX, canvasHeight
+      );
+
+      // 右侧翻折部分（镜像）
+      const rightStartX = axisX / scale;
+      const rightWidth = currentImage.width - rightStartX;
+      const rightDisplayWidth = rightWidth * scale;
+
+      ctx.save();
+      ctx.translate(axisX, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(
+        currentImage,
+        rightStartX, 0, rightWidth, currentImage.height,
+        0, 0, rightDisplayWidth, canvasHeight
+      );
+      ctx.restore();
+
+      // 更新对称轴线位置
+      axisLine.style.left = `${axisX}px`;
+    }
+
+    // 响应式重绘
+    window.addEventListener('resize', () => {
+      if (currentImage) render();
+    });
+  </script>
+</body>
+</html>

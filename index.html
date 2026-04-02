@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>初中数学交互动画</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧导航栏 -->
+        <div class="left-panel">
+            <div class="header">
+                <h1>初中数学交互动画</h1>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="搜索动画资源...">
+                    <button id="search-btn">搜索</button>
+                </div>
+            </div>
+            
+            <!-- 导航菜单 -->
+            <div class="nav-menu" id="nav-menu">
+                <!-- 导航内容将通过JavaScript动态生成 -->
+            </div>
+            
+            <!-- 管理员入口 -->
+            <div class="admin-entry">
+                <a href="admin.html">管理后台</a>
+            </div>
+        </div>
+        
+        <!-- 右侧动画展示区 -->
+        <div class="right-panel">
+            <div class="animation-container" id="animation-container">
+                <div class="loading" id="loading">加载中...</div>
+                <div class="error" id="error" style="display: none;">加载失败，请重试</div>
+                <div class="animation-content" id="animation-content">
+                    <!-- 动画内容将在这里显示 -->
+                </div>
+            </div>
+            
+            <!-- 动画控制栏 -->
+            <div class="control-bar">
+                <button id="fullscreen-btn">全屏</button>
+                <button id="refresh-btn">刷新</button>
+                <button id="favorite-btn">收藏</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://www.geogebra.org/apps/deployggb.js"></script>
+    <script src="frontend/js/notification.js"></script>
+    <script src="frontend/js/main.js"></script>
+</body>
+</html>

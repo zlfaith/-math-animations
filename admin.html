@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 初中数学交互动画</title>
+    <link rel="stylesheet" href="frontend/css/style.css">
+    <style>
+        .admin-container {
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .form-section {
+            margin: 0;
+            padding: 30px;
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-radius: 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        input[type="text"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        input[type="file"] {
+            padding: 5px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+        }
+        
+        .animation-list {
+            margin-top: 20px;
+        }
+        
+        .animation-item {
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        
+        .animation-item h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .animation-item p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .action-buttons {
+            margin-top: 10px;
+        }
+        
+        .back-link {
+            display: block;
+            margin: 20px 0;
+            text-align: center;
+            color: #1976D2;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        .filter-container .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .animation-stats {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+        
+        .pagination button {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .pagination button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .animation-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .animation-table th,
+        .animation-table td {
+            padding: 14px 16px;
+            text-align: left;
+        }
+        
+        .animation-table th {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .animation-table td {
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+        
+        .animation-table tr {
+            transition: all 0.3s ease;
+        }
+        
+        .animation-table tr:hover {
+            background-color: #f8fafc;
+            transform: translateX(4px);
+        }
+        
+        .animation-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .batch-actions {
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-cell {
+            width: 40px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            margin-bottom: 0;
+        }
+        
+        .header h1 {
+            text-align: left;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            margin: 5% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e3a8a;
+        }
+        
+        .close {
+            color: #64748b;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: #1e3a8a;
+            background-color: #f1f5f9;
+            transform: rotate(90deg);
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 2px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 密码输入界面 -->
+    <div id="password-modal" class="modal" style="display: flex; justify-content: center; align-items: center; background-color: #f5f5f5; height: 100vh;">
+        <div class="modal-content" style="max-width: 400px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+            <div class="modal-header" style="text-align: center; border-bottom: none; margin-bottom: 30px;">
+                <h2 style="color: #333; font-size: 18px; font-weight: 600;">请输入管理密码</h2>
+            </div>
+            <div class="modal-body">
+                <form id="password-form">
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label for="password" style="display: block; margin-bottom: 8px; font-size: 14px; color: #666;">密码</label>
+                        <input type="password" id="password" placeholder="请输入密码" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    </div>
+                    <div class="modal-footer" style="justify-content: center; border-top: none; margin-top: 30px;">
+                        <button type="submit" class="btn" style="background-color: #4CAF50; color: white; padding: 10px 40px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">登录</button>
+                    </div>
+                </form>
+                <p id="password-error" style="color: red; text-align: center; margin-top: 15px; display: none; font-size: 14px;">密码错误，请重试</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 管理后台内容 -->
+    <div class="admin-container" style="display: none;">
+        <div class="header">
+            <h1>动画资源管理</h1>
+        </div>
+        
+        <!-- 搜索和过滤 -->
+        <div class="form-section">
+            <h2>搜索和过滤</h2>
+            <div class="filter-container">
+                <div class="form-group">
+                    <input type="text" id="search-input" placeholder="搜索动画名称...">
+                </div>
+                <div class="form-group">
+                    <select id="filter-type">
+                        <option value="">所有类型</option>
+                        <option value="ggb">GGB在线动画</option>
+                        <option value="html">本地HTML动画</option>
+                        <option value="external">外部网站动画</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="filter-grade">
+                        <option value="">所有年级</option>
+                        <option value="初一">初一</option>
+                        <option value="初二">初二</option>
+                        <option value="初三">初三</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="filter-semester">
+                        <option value="">所有学期</option>
+                        <option value="上册">上册</option>
+                        <option value="下册">下册</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="filter-chapter">
+                        <option value="">所有章节</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-secondary" onclick="applyFilters()">
+                        🔍 应用过滤
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" style="margin-left: 10px;">
+                        🔄 重置
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 动画列表 -->
+        <div class="form-section">
+            <div class="list-header">
+                <h2>动画资源列表</h2>
+                <div id="animation-stats" class="animation-stats"></div>
+            </div>
+            <div class="batch-actions" style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; padding: 16px; background-color: #f8fafc; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+                <button class="btn btn-danger" onclick="batchDelete()">
+                    🗑️ 批量删除
+                </button>
+                <button class="btn btn-primary" onclick="openAddAnimationModal()">
+                    ➕ 添加新动画
+                </button>
+                <a href="index.html" class="btn btn-secondary">
+                    🏠 返回首页
+                </a>
+            </div>
+            <div id="animation-list" class="animation-list">
+                <!-- 动画列表将通过JavaScript动态生成 -->
+            </div>
+            <div id="pagination" class="pagination">
+                <!-- 分页控件将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 动画编辑模态框 -->
+    <div id="animation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">添加新动画</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="animation-form">
+                    <input type="hidden" id="animation-id" value="">
+                    
+                    <div class="form-group">
+                        <label for="animation-name">动画名称</label>
+                        <input type="text" id="animation-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="animation-type">动画类型</label>
+                        <select id="animation-type" required>
+                            <option value="ggb">GGB在线动画</option>
+                            <option value="html">本地HTML动画</option>
+                            <option value="external">外部网站动画</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="ggb-url-group">
+                        <label for="ggb-url">GGB动画URL</label>
+                        <input type="text" id="ggb-url" placeholder="https://www.geogebra.org/m/...">
+                    </div>
+                    
+                    <div class="form-group" id="html-file-group" style="display: none;">
+                        <label for="html-file">本地HTML文件</label>
+                        <input type="file" id="html-file" accept=".html">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="grade">年级</label>
+                        <select id="grade" required>
+                            <option value="初一">初一</option>
+                            <option value="初二">初二</option>
+                            <option value="初三">初三</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="semester">学期</label>
+                        <select id="semester" required>
+                            <option value="上册">上册</option>
+                            <option value="下册">下册</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="chapter">章节</label>
+                        <select id="chapter" required>
+                            <option value="">请选择章节</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="other-chapter-group" style="display: none;">
+                        <label for="other-chapter">其他章节名称</label>
+                        <input type="text" id="other-chapter" placeholder="请输入其他章节名称">
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="frontend/js/notification.js"></script>
+    <script src="frontend/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笛卡尔心形曲线与轴对称</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#e94560',
+                        secondary: '#1a1a2e',
+                        accent: '#4cc9f0',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .heart-shadow {
+                filter: drop-shadow(0 0 8px rgba(233, 69, 96, 0.6));
+            }
+            .axis-line {
+                stroke-dasharray: 5,5;
+                animation: dash 3s linear infinite;
+            }
+            @keyframes dash {
+                to {
+                    stroke-dashoffset: -10;
+                }
+            }
+            @keyframes pulse-soft {
+                0%, 100% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.02);
+                }
+            }
+            .pulse-soft {
+                animation: pulse-soft 3s ease-in-out infinite;
+            }
+            .canvas-container {
+                min-width: 250px;
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-sans">
+    <!-- 页面标题 -->
+    <header class="py-6 px-4 md:px-8 text-center">
+        <h1 class="text-[clamp(1.5rem,4vw,2.2rem)] font-bold text-secondary mb-2">
+            笛卡尔心形曲线与<span class="text-primary">轴对称</span>
+        </h1>
+        <p class="text-gray-600 max-w-2xl mx-auto text-[clamp(0.9rem,2vw,1rem)]">
+            探索数学之美：从浪漫曲线到对称原理
+        </p>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="max-w-6xl mx-auto px-4 md:px-8 pb-10">
+        <!-- 笛卡尔与心形曲线介绍（前置） -->
+        <section class="bg-white rounded-xl shadow-md p-4 md:p-5 mb-6 transform transition-all duration-300 hover:shadow-lg">
+            <div class="flex items-start gap-3">
+                <div class="text-primary text-2xl mt-1">
+                    <i class="fa fa-history"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-secondary mb-2">笛卡尔与心形曲线</h2>
+                    <p class="text-gray-600 text-sm md:text-base">
+                        传说笛卡尔在晚年写给瑞典公主克里斯汀的最后一封信中，只包含了一个数学公式：r = a(1 - sinθ)。
+                        当公主画出这条曲线时，发现它是一个心形，这成为了数学史上最浪漫的故事之一。
+                        这条曲线具有完美的轴对称性，关于竖直轴对称。
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 互动展示区 -->
+        <section class="bg-white rounded-xl shadow-md p-4 md:p-5 mb-6 transform transition-all duration-300 hover:shadow-lg">
+            <div class="flex flex-col lg:flex-row gap-6 items-center">
+                <!-- 图形展示 -->
+                <div class="w-full lg:w-1/2 flex justify-center">
+                    <div class="canvas-container relative bg-gray-50 rounded-lg p-3 aspect-square max-w-md" id="canvasContainer">
+                        <canvas id="heartCanvas" width="350" height="350" class="w-full h-full heart-shadow pulse-soft"></canvas>
+                        <!-- 对称轴将通过JS精确计算定位 -->
+                        <div id="axisIndicator" class="hidden absolute top-0 w-0.5 h-full bg-accent/70 axis-line"></div>
+                    </div>
+                </div>
+                
+                <!-- 控制面板和说明 -->
+                <div class="w-full lg:w-1/2">
+                    <h2 class="text-xl font-semibold text-secondary mb-3">互动探索</h2>
+                    <p class="text-gray-600 mb-4 text-sm md:text-base">
+                        笛卡尔心形曲线是一个经典的轴对称图形，它关于y轴对称。拖动滑块调整大小，观察其对称特性！
+                    </p>
+                    
+                    <div class="space-y-3 mb-4">
+                        <div>
+                            <label for="sizeControl" class="block text-gray-700 mb-1 text-sm">曲线大小</label>
+                            <input type="range" id="sizeControl" min="50" max="150" value="100" 
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="showAxis" class="w-4 h-4 accent-primary" checked>
+                            <label for="showAxis" class="text-gray-700 text-sm">显示对称轴</label>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="animateDrawing" class="w-4 h-4 accent-primary" checked>
+                            <label for="animateDrawing" class="text-gray-700 text-sm">动画绘制</label>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm">
+                        <h3 class="font-medium text-secondary mb-1">数学表达式</h3>
+                        <p class="text-gray-600 mb-1">极坐标形式：<code class="bg-gray-100 px-1 rounded">r = a(1 - sinθ)</code></p>
+                        <p class="text-gray-600">参数方程：
+                            <code class="bg-gray-100 px-1 rounded block my-0.5">x = 16sin³θ</code>
+                            <code class="bg-gray-100 px-1 rounded block">y = 13cosθ - 5cos2θ - 2cos3θ - cos4θ</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-secondary text-white py-3 px-4 text-center text-sm">
+        <p>轴对称图形课程导入演示</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('heartCanvas');
+            const ctx = canvas.getContext('2d');
+            const axisIndicator = document.getElementById('axisIndicator');
+            const sizeControl = document.getElementById('sizeControl');
+            const showAxisCheckbox = document.getElementById('showAxis');
+            const animateCheckbox = document.getElementById('animateDrawing');
+            const canvasContainer = document.getElementById('canvasContainer');
+            
+            // 关键修复：通过JS精确计算对称轴位置
+            function updateAxisPosition() {
+                const canvasRect = canvas.getBoundingClientRect();
+                const containerRect = canvasContainer.getBoundingClientRect();
+                // 计算Canvas中心在容器中的相对位置
+                const centerX = canvasRect.width / 2 + (canvasRect.left - containerRect.left);
+                axisIndicator.style.left = `${centerX}px`;
+            }
+            
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                const size = Math.min(container.clientWidth, 350);
+                canvas.width = size;
+                canvas.height = size;
+                canvas.style.width = `${size}px`;
+                canvas.style.height = `${size}px`;
+                updateAxisPosition(); // 重新计算对称轴位置
+                drawHeart();
+            }
+            
+            let scale = parseInt(sizeControl.value) / 100;
+            let animationProgress = 0;
+            let isAnimating = true;
+            
+            function drawHeart() {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const baseSize = Math.min(canvas.width, canvas.height) * 0.35;
+                const size = baseSize * scale;
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制辅助坐标轴
+                ctx.beginPath();
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 1;
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(canvas.width, centerY);
+                ctx.moveTo(centerX, 0);
+                ctx.lineTo(centerX, canvas.height);
+                ctx.stroke();
+                
+                // 绘制心形曲线
+                ctx.beginPath();
+                ctx.strokeStyle = '#e94560';
+                ctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
+                ctx.lineWidth = 3;
+                
+                const maxTheta = isAnimating ? Math.min(2 * Math.PI, animationProgress) : 2 * Math.PI;
+                
+                for (let theta = 0; theta <= maxTheta; theta += 0.005) {
+                    const sinTheta = Math.sin(theta);
+                    const cosTheta = Math.cos(theta);
+                    const x = 16 * Math.pow(sinTheta, 3);
+                    const y = 13 * cosTheta - 5 * Math.cos(2*theta) - 2 * Math.cos(3*theta) - Math.cos(4*theta);
+                    
+                    const canvasX = centerX + x * (size / 16);
+                    const canvasY = centerY - y * (size / 16);
+                    
+                    if (theta === 0) {
+                        ctx.moveTo(canvasX, canvasY);
+                    } else {
+                        ctx.lineTo(canvasX, canvasY);
+                    }
+                }
+                
+                ctx.stroke();
+                ctx.fill();
+                
+                axisIndicator.classList.toggle('hidden', !showAxisCheckbox.checked);
+                
+                if (isAnimating) {
+                    if (animationProgress < 2 * Math.PI) {
+                        animationProgress += 0.03;
+                        requestAnimationFrame(drawHeart);
+                    } else {
+                        setTimeout(() => {
+                            animationProgress = 0;
+                            drawHeart();
+                        }, 800);
+                    }
+                }
+            }
+            
+            // 事件监听
+            sizeControl.addEventListener('input', () => {
+                scale = parseInt(sizeControl.value) / 100;
+                drawHeart();
+            });
+            
+            showAxisCheckbox.addEventListener('change', () => {
+                axisIndicator.classList.toggle('hidden', !showAxisCheckbox.checked);
+            });
+            
+            animateCheckbox.addEventListener('change', () => {
+                isAnimating = animateCheckbox.checked;
+                if (isAnimating) {
+                    animationProgress = 0;
+                    drawHeart();
+                }
+            });
+            
+            // 窗口大小变化时重新计算对称轴位置
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                updateAxisPosition();
+            });
+            
+            // 初始化
+            resizeCanvas();
+            updateAxisPosition();
+            setTimeout(drawHeart, 100);
+        });
+    </script>
+</body>
+</html>

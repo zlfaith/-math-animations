@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>数学探究：四边形的不稳定性 | 平面四边形 vs 空间四边形 | 3D可旋转</title>
+    <style>
+        * {
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Noto Sans', system-ui, 'Microsoft YaHei', sans-serif;
+            background: #f1f8e9;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2e7d32;
+            color: white;
+            padding: 1.2rem 2rem;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .header h1 small {
+            font-size: 0.85rem;
+            font-weight: normal;
+            background: #1b5e20;
+            padding: 4px 12px;
+            border-radius: 40px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .canvas-area {
+            flex: 2;
+            min-width: 600px;
+            background: #1a1a2e;
+            padding: 1.5rem;
+            text-align: center;
+            border-right: 1px solid #333;
+        }
+
+        .info-area {
+            flex: 1;
+            min-width: 280px;
+            background: #faf7f0;
+            padding: 1.5rem;
+        }
+
+        canvas {
+            background: #0f0f1a;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            cursor: grab;
+            width: 100%;
+            max-width: 750px;
+            height: auto;
+            border: 1px solid #333;
+            touch-action: none;
+        }
+
+        canvas.dragging {
+            cursor: grabbing;
+        }
+
+        canvas.not-allowed {
+            cursor: not-allowed;
+        }
+
+        .controls {
+            padding: 1rem 1.5rem;
+            background: #ffffff;
+            text-align: center;
+            border-bottom: 1px solid #ece8e0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        button {
+            background: #f5f5f5;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-weight: 600;
+            display: inline-block;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1b5e20;
+        }
+
+        .btn-secondary {
+            background: #ffb74d;
+            color: #3e2723;
+        }
+
+        .btn-outline {
+            background: #fff3e0;
+            border: 1px solid #d9c8a9;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status-badge {
+            background: #e8f0fe;
+            border-radius: 40px;
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 12px;
+        }
+
+        .stable-text {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .unstable-text {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .space-text {
+            color: #7b1fa2;
+            font-weight: bold;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 1.2rem;
+            padding: 1rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .info-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            color: #2e7d32;
+            border-left: 4px solid #ffb74d;
+            padding-left: 12px;
+        }
+
+        .info-card p {
+            margin: 8px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #4e4b44;
+        }
+
+        .definition-box {
+            background: #e3f2fd;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-left: 4px solid #2196f3;
+        }
+
+        .definition-box strong {
+            color: #0d47a1;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 10px;
+            margin: 0;
+            justify-content: center;
+        }
+
+        .mode-btn {
+            background: #e0e0e0;
+            color: #333;
+            padding: 8px 20px;
+        }
+
+        .mode-btn.active {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .view-control {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .view-btn {
+            background: #333;
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            .canvas-area {
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .main-content {
+                flex-direction: column;
+            }
+            .header h1 {
+                font-size: 1.3rem;
+            }
+            .header h1 small {
+                display: block;
+                margin-left: 0;
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <h1>
+            📐 四边形稳定性探究 · 边长固定不变
+            <small>平面四边形 vs 空间四边形</small>
+        </h1>
+        <p>🔍 扭动四边形 → 形状改变但<strong>每条木条长度不变</strong>（不稳定性） | 加一根木条（对角线）→ 两个三角形 → 形状固定（稳定性）</p>
+    </div>
+
+    <div class="controls">
+            <button id="addBraceBtn" class="btn-primary">➕ 钉一根木条 (加斜撑)</button>
+            <button id="removeBraceBtn" class="btn-secondary" disabled>✖️ 拆除斜撑</button>
+            <button id="resetBtn" class="btn-outline">🔄 重置形状</button>
+        </div>
+
+    <div class="main-content">
+        <div class="canvas-area">
+            <canvas id="quadCanvas" width="750" height="500" style="width:100%; height:auto; max-width:750px"></canvas>
+            <div class="status-badge" id="statusBadge">
+                📌 当前状态: <span id="stabilityState" class="unstable-text">⚡ 不稳定 (四边形可扭动，边长不变)</span>
+            </div>
+        </div>
+
+        <div class="info-area">
+            <div class="info-card">
+                <h3>🏭 生活中的应用</h3>
+                <p><strong>伸缩门</strong>：利用四边形的不稳定性，边长不变但角度改变，轻松伸缩。</p>
+                <p><strong>窗框加固</strong>：木工师傅钉斜撑木条，构成三角形，防止变形。</p>
+            </div>
+            
+            <div class="info-card">
+                <h3>📖 四边形的准确定义</h3>
+                <div class="definition-box">
+                    <p><strong>✅ 平面四边形：</strong>在<strong style="color:#c62828">同一平面内</strong>，由<strong>不在同一直线上</strong>的四条线段<strong>首尾顺次相接</strong>组成的图形。</p>
+                    <p style="margin-top:10px"><strong>🌐 空间四边形：</strong>四条线段首尾顺次相接，但<strong style="color:#7b1fa2">四个顶点不在同一平面内</strong>，形成空间折线（立体图形）。</p>
+                    <p style="margin-top:10px; font-size:0.85rem; color:#666;">💡 <strong>关键区别：</strong>平面四边形的所有顶点都在同一个平面上；空间四边形的顶点分布在空间中，无法用一个平面同时包含四个顶点。</p>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <h3>📖 数学原理</h3>
+                <p>✅ 三角形具有稳定性：三边确定 → 形状唯一。<br>
+                ❌ 四边形不具有稳定性：四边确定但角度可变 → 形状可扭动。<br>
+                🔨 添加一条对角线 → 分割成两个三角形 → 整体形状固定。<br>
+                🌐 <strong>空间四边形</strong>：四个点不在同一平面，可以绕对角线"扭曲"成立体形状。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ----- 画布元素 -----
+        var canvas = document.getElementById('quadCanvas');
+        var ctx = canvas.getContext('2d');
+        var width = 750, height = 500;
+        canvas.width = width;
+        canvas.height = height;
+        
+        // 平面四边形数据
+        // 四个顶点坐标 (二维)
+        var planePoints = [
+            { x: 200, y: 180 },  // A
+            { x: 450, y: 150 },  // B
+            { x: 600, y: 340 },  // C
+            { x: 120, y: 360 }   // D
+        ];
+        
+        // 边长约束
+        var edgeLengths = [0, 0, 0, 0];
+        var bracingEnabled = false;
+        var allowDrag = true;
+        
+        // 拖拽相关
+        var draggedIndex = -1;
+        var isDragging = false;
+        var dragStartPoint = null;
+        
+        // DOM元素
+        var addBtn = document.getElementById('addBraceBtn');
+        var removeBtn = document.getElementById('removeBraceBtn');
+        var resetBtn = document.getElementById('resetBtn');
+        var stabilitySpan = document.getElementById('stabilityState');
+        
+        // ========== 辅助函数 ==========
+        function distance2D(p1, p2) {
+            var dx = p2.x - p1.x;
+            var dy = p2.y - p1.y;
+            return Math.hypot(dx, dy);
+        }
+        
+        // 更新当前显示的顶点
+        var currentPoints = [];
+        
+        function updateCurrentPoints() {
+            currentPoints = planePoints.map(function(p) { 
+                return { x: p.x, y: p.y, depth: 0 }; 
+            });
+        }
+        
+        // 计算平面模式下的边长
+        function computePlaneEdgeLengths() {
+            var AB = distance2D(planePoints[1], planePoints[0]);
+            var BC = distance2D(planePoints[2], planePoints[1]);
+            var CD = distance2D(planePoints[3], planePoints[2]);
+            var DA = distance2D(planePoints[0], planePoints[3]);
+            return [AB, BC, CD, DA];
+        }
+        
+        function updateStoredEdgeLengths() {
+            edgeLengths = computePlaneEdgeLengths();
+        }
+        
+        function getOppositeIndex(index) {
+            return (index + 2) % 4;
+        }
+        
+        // 平面模式的边长约束
+        function constrainPlaneEdge(i1, i2, targetLen, pointsArray, fixedIndex) {
+            var p1 = pointsArray[i1];
+            var p2 = pointsArray[i2];
+            var dx = p2.x - p1.x;
+            var dy = p2.y - p1.y;
+            var dist = Math.hypot(dx, dy);
+            if (dist < 1e-6) return;
+            
+            if (fixedIndex !== undefined) {
+                if (i1 === fixedIndex) {
+                    var ratio = targetLen / dist;
+                    p2.x = p1.x + dx * ratio;
+                    p2.y = p1.y + dy * ratio;
+                    return;
+                }
+                if (i2 === fixedIndex) {
+                    var ratio = targetLen / dist;
+                    p1.x = p2.x - dx * ratio;
+                    p1.y = p2.y - dy * ratio;
+                    return;
+                }
+            }
+            
+            var correction = (targetLen - dist) / dist * 0.5;
+            p1.x -= dx * correction;
+            p1.y -= dy * correction;
+            p2.x += dx * correction;
+            p2.y += dy * correction;
+        }
+        
+        function enforcePlaneConstraints(draggedIdx, pointsArray) {
+            if (draggedIdx === -1) return;
+            var oppositeIndex = getOppositeIndex(draggedIdx);
+            var prev = (draggedIdx - 1 + 4) % 4;
+            var next = (draggedIdx + 1) % 4;
+            
+            var fixedX = pointsArray[oppositeIndex].x;
+            var fixedY = pointsArray[oppositeIndex].y;
+            
+            for (var iter = 0; iter < 12; iter++) {
+                constrainPlaneEdge(oppositeIndex, prev, edgeLengths[(oppositeIndex + 1) % 4], pointsArray, oppositeIndex);
+                constrainPlaneEdge(oppositeIndex, next, edgeLengths[oppositeIndex], pointsArray, oppositeIndex);
+                constrainPlaneEdge(draggedIdx, prev, edgeLengths[prev], pointsArray, oppositeIndex);
+                constrainPlaneEdge(draggedIdx, next, edgeLengths[draggedIdx], pointsArray, oppositeIndex);
+            }
+            
+            pointsArray[oppositeIndex].x = fixedX;
+            pointsArray[oppositeIndex].y = fixedY;
+            
+            var margin = 12;
+            for (var i = 0; i < pointsArray.length; i++) {
+                pointsArray[i].x = Math.min(Math.max(margin, pointsArray[i].x), width - margin);
+                pointsArray[i].y = Math.min(Math.max(margin, pointsArray[i].y), height - margin);
+            }
+        }
+        
+        // 空间模式的3D边长约束
+        function enforceSpaceConstraints(draggedIdx, points3D) {
+            if (draggedIdx === -1) return;
+            
+            // 多次迭代使边长逼近目标值
+            for (var iter = 0; iter < 15; iter++) {
+                // 约束每条边
+                for (var i = 0; i < 4; i++) {
+                    var j = (i + 1) % 4;
+                    var p1 = points3D[i];
+                    var p2 = points3D[j];
+                    var dx = p2.x - p1.x;
+                    var dy = p2.y - p1.y;
+                    var dz = p2.z - p1.z;
+                    var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    if (dist < 1e-6) continue;
+                    var correction = (edgeLengths[i] - dist) / dist * 0.5;
+                    p1.x -= dx * correction;
+                    p1.y -= dy * correction;
+                    p1.z -= dz * correction;
+                    p2.x += dx * correction;
+                    p2.y += dy * correction;
+                    p2.z += dz * correction;
+                }
+            }
+        }
+        
+        // 更新顶点位置
+        function updateVertexWithConstraints(index, newX, newY) {
+            if (index < 0 || index >= 4) return;
+            if (bracingEnabled) return;
+            
+            var margin = 12;
+            var clampedX = Math.min(Math.max(margin, newX), width - margin);
+            var clampedY = Math.min(Math.max(margin, newY), height - margin);
+            planePoints[index].x = clampedX;
+            planePoints[index].y = clampedY;
+            enforcePlaneConstraints(index, planePoints);
+            updateCurrentPoints();
+            drawCanvas();
+        }
+        
+        // 重置
+        function resetShape() {
+            planePoints = [
+                { x: 200, y: 180 },
+                { x: 450, y: 150 },
+                { x: 600, y: 340 },
+                { x: 120, y: 360 }
+            ];
+            updateCurrentPoints();
+            updateStoredEdgeLengths();
+            drawCanvas();
+        }
+        
+        // 绘制
+        function drawCanvas() {
+            if (!ctx) return;
+            updateCurrentPoints();
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            
+            // 绘制背景网格
+            ctx.strokeStyle = '#2a2a3a';
+            ctx.lineWidth = 0.5;
+            for (var i = 0; i < width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(width, i);
+                ctx.stroke();
+            }
+            
+            var points = currentPoints;
+            
+            // 填充四边形
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (var i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#FFF5E6';
+            ctx.fill();
+            ctx.strokeStyle = '#B97F44';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            
+            // 绘制对角线
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            ctx.lineTo(points[2].x, points[2].y);
+            ctx.strokeStyle = '#c0a080';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 绘制斜撑
+            if (bracingEnabled) {
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                ctx.lineTo(points[2].x, points[2].y);
+                ctx.strokeStyle = '#D32F2F';
+                ctx.lineWidth = 7;
+                ctx.stroke();
+                ctx.fillStyle = '#BF360C';
+                ctx.beginPath();
+                ctx.arc(points[0].x, points[0].y, 6, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(points[2].x, points[2].y, 6, 0, 2*Math.PI);
+                ctx.fill();
+            }
+            
+            // 绘制顶点
+            for (var i = 0; i < points.length; i++) {
+                var p = points[i];
+                var size = 11;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size, 0, 2 * Math.PI);
+                ctx.fillStyle = '#8D6E63';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size-3, 0, 2 * Math.PI);
+                ctx.fillStyle = '#BC9A6C';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, size-6, 0, 2 * Math.PI);
+                ctx.fillStyle = '#FDD835';
+                ctx.fill();
+            }
+            
+            // 顶点标注
+            ctx.font = "bold 14px 'Segoe UI'";
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowBlur = 2;
+            ctx.shadowColor = 'black';
+            var labels = ['A', 'B', 'C', 'D'];
+            for (var i = 0; i < points.length; i++) {
+                ctx.fillText(labels[i], points[i].x-10, points[i].y-12);
+            }
+            ctx.shadowBlur = 0;
+            
+            // 边长标注
+            ctx.font = "11px 'Segoe UI'";
+            ctx.fillStyle = '#ffd966';
+            ctx.shadowBlur = 1;
+            var edges = [[0,1], [1,2], [2,3], [3,0]];
+            for (var i = 0; i < edges.length; i++) {
+                var p1 = points[edges[i][0]];
+                var p2 = points[edges[i][1]];
+                var mx = (p1.x + p2.x) / 2;
+                var my = (p1.y + p2.y) / 2;
+                var len = distance2D(p1, p2);
+                ctx.fillText(len.toFixed(1), mx-12, my-8);
+            }
+            
+            // 提示信息
+            ctx.font = "italic 12px 'Segoe UI'";
+            ctx.fillStyle = '#AA7C5C';
+            ctx.fillText("💡 拖动任意顶点 → 对角顶点固定，边长不变", width-280, 35);
+            
+            ctx.restore();
+        }
+        
+        // UI更新
+        function updateUIByMode() {
+            if (bracingEnabled) {
+                addBtn.disabled = true;
+                removeBtn.disabled = false;
+                stabilitySpan.innerHTML = '🔒 稳定状态 (三角形结构) 形状固定';
+                stabilitySpan.className = 'stable-text';
+                canvas.style.cursor = 'not-allowed';
+                allowDrag = false;
+            } else {
+                addBtn.disabled = false;
+                removeBtn.disabled = true;
+                stabilitySpan.innerHTML = '⚡ 不稳定状态 | 平面四边形 | 对角顶点固定·边长不变';
+                stabilitySpan.className = 'unstable-text';
+                canvas.style.cursor = 'grab';
+                allowDrag = true;
+            }
+            
+            updateCurrentPoints();
+            drawCanvas();
+        }
+        
+        function enableBracing() {
+            if (bracingEnabled) return;
+            bracingEnabled = true;
+            updateUIByMode();
+        }
+        
+        function disableBracing() {
+            if (!bracingEnabled) return;
+            bracingEnabled = false;
+            updateUIByMode();
+        }
+        
+        // 拖拽事件
+        var isRotating = false;
+        var lastMouseX = 0, lastMouseY = 0;
+        
+        function getCanvasCoords(e) {
+            var rect = canvas.getBoundingClientRect();
+            var scaleX = canvas.width / rect.width;
+            var scaleY = canvas.height / rect.height;
+            var clientX, clientY;
+            if (e.touches) {
+                if (e.touches.length === 0) return null;
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+        
+        function findNearestVertex(px, py) {
+            updateCurrentPoints();
+            var threshold = 25;
+            var minDist = threshold;
+            var idx = -1;
+            for (var i = 0; i < currentPoints.length; i++) {
+                var p = currentPoints[i];
+                var dist = Math.hypot(p.x - px, p.y - py);
+                if (dist < minDist) {
+                    minDist = dist;
+                    idx = i;
+                }
+            }
+            return idx;
+        }
+        
+        function onPointerDown(e) {
+            e.preventDefault();
+            if (!allowDrag || bracingEnabled) return;
+            var coord = getCanvasCoords(e);
+            if (!coord) return;
+            
+            // 平面模式下，允许拖拽顶点
+            var idx = findNearestVertex(coord.x, coord.y);
+            if (idx !== -1) {
+                draggedIndex = idx;
+                isDragging = true;
+                canvas.style.cursor = 'grabbing';
+            }
+        }
+        
+        function onPointerMove(e) {
+            if (!allowDrag) return;
+            var coord = getCanvasCoords(e);
+            if (!coord) return;
+            
+            if (isDragging && draggedIndex !== -1 && !bracingEnabled) {
+                // 处理拖拽顶点
+                updateVertexWithConstraints(draggedIndex, coord.x, coord.y);
+            }
+        }
+        
+        function onPointerUp() {
+            if (isDragging) {
+                isDragging = false;
+                draggedIndex = -1;
+                canvas.style.cursor = 'grab';
+            }
+            if (isRotating) {
+                isRotating = false;
+                canvas.style.cursor = 'grab';
+            }
+        }
+        
+        function bindEvents() {
+            canvas.addEventListener('mousedown', onPointerDown);
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('mouseup', onPointerUp);
+            canvas.addEventListener('touchstart', onPointerDown);
+            window.addEventListener('touchmove', onPointerMove);
+            window.addEventListener('touchend', onPointerUp);
+            canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+        }
+        
+        function forceEndDrag() {
+            isDragging = false;
+            isRotating = false;
+            draggedIndex = -1;
+            canvas.style.cursor = 'grab';
+        }
+        
+        function init() {
+            bindEvents();
+            updateCurrentPoints();
+            updateStoredEdgeLengths();
+            drawCanvas();
+            updateUIByMode();
+            
+            addBtn.onclick = function() { forceEndDrag(); enableBracing(); };
+            removeBtn.onclick = function() { forceEndDrag(); disableBracing(); };
+            resetBtn.onclick = function() { forceEndDrag(); resetShape(); };
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>整式的概念</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .definition {
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .example {
+            background-color: #f3e5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .example h3 {
+            color: #673ab7;
+            margin-bottom: 10px;
+        }
+        
+        .interactive {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fff3e0;
+        }
+        
+        .interactive h3 {
+            color: #ff9800;
+            margin-bottom: 15px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input {
+            padding: 8px;
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>整式的概念</h1>
+        
+        <div class="definition">
+            <h2>定义</h2>
+            <p>整式是单项式和多项式的统称。</p>
+            <ul>
+                <li><strong>单项式：</strong>由数或字母的积组成的代数式，单独的一个数或一个字母也叫做单项式。</li>
+                <li><strong>多项式：</strong>几个单项式的和叫做多项式。</li>
+            </ul>
+        </div>
+        
+        <div class="example">
+            <h3>单项式示例</h3>
+            <ul>
+                <li>3（单独的一个数）</li>
+                <li>a（单独的一个字母）</li>
+                <li>3a（数与字母的积）</li>
+                <li>-5xy²（数与字母的积，带有负号）</li>
+            </ul>
+        </div>
+        
+        <div class="example">
+            <h3>多项式示例</h3>
+            <ul>
+                <li>2a + 3b（两个单项式的和）</li>
+                <li>x² - 2x + 1（三个单项式的和）</li>
+                <li>3xy + 2y - 1（三个单项式的和）</li>
+            </ul>
+        </div>
+        
+        <div class="interactive">
+            <h3>互动练习</h3>
+            <p>判断下列代数式是否为整式：</p>
+            
+            <div class="input-group">
+                <label for="expression">输入代数式：</label>
+                <input type="text" id="expression" placeholder="例如：3x+2">
+                <button onclick="checkExpression()">判断</button>
+            </div>
+            
+            <div id="result"></div>
+        </div>
+    </div>
+    
+    <script>
+        function checkExpression() {
+            const expression = document.getElementById('expression').value;
+            const resultDiv = document.getElementById('result');
+            
+            // 简单的整式判断逻辑
+            // 这里只是一个示例，实际判断可能更复杂
+            const is整式 = /^[a-zA-Z0-9+\-*\s/]+$/.test(expression) && !expression.includes('/');
+            
+            if (is整式) {
+                resultDiv.innerHTML = `"${expression}" 是整式`;
+                resultDiv.style.color = '#4CAF50';
+            } else {
+                resultDiv.innerHTML = `"${expression}" 不是整式`;
+                resultDiv.style.color = '#f44336';
+            }
+        }
+    </script>
+</body>
+</html>

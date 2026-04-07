@@ -1,9 +1,45 @@
 // 全局变量
-let animations = JSON.parse(localStorage.getItem('animations')) || [];
+let animations = [];
 let filteredAnimations = [...animations];
 let currentPage = 1;
 const itemsPerPage = 10;
 const DEFAULT_PASSWORD = '202486';
+
+// 从JSON文件加载动画数据
+async function loadAnimationsFromJSON() {
+    try {
+        const response = await fetch('animations.json');
+        if (!response.ok) {
+            throw new Error('Failed to load animations.json');
+        }
+        const data = await response.json();
+        animations = data;
+        // 同步到本地存储
+        localStorage.setItem('animations', JSON.stringify(animations));
+        console.log('从JSON文件加载动画数据成功:', animations);
+        return true;
+    } catch (error) {
+        console.error('加载动画数据失败:', error);
+        // 如果JSON文件加载失败，使用本地存储的数据
+        animations = JSON.parse(localStorage.getItem('animations')) || [];
+        return false;
+    }
+}
+
+// 保存动画数据到JSON文件
+async function saveAnimationsToJSON() {
+    try {
+        // 这里只是模拟保存，实际需要后端API支持
+        // 在前端环境中，我们无法直接写入JSON文件
+        // 所以我们只是更新本地存储和显示成功消息
+        localStorage.setItem('animations', JSON.stringify(animations));
+        console.log('动画数据已保存到本地存储:', animations);
+        return true;
+    } catch (error) {
+        console.error('保存动画数据失败:', error);
+        return false;
+    }
+}
 
 // 章节数据
 const chapterData = {
@@ -496,8 +532,54 @@ async function batchDelete() {
     }
 }
 
+// 打开更新数据模态框
+function openUpdateDataModal() {
+    // 将当前动画数据转换为JSON格式并显示在文本框中
+    const jsonData = JSON.stringify(animations, null, 2);
+    document.getElementById('json-data').value = jsonData;
+    document.getElementById('update-data-modal').style.display = 'block';
+}
+
+// 关闭更新数据模态框
+function closeUpdateDataModal() {
+    document.getElementById('update-data-modal').style.display = 'none';
+}
+
+// 更新动画数据
+async function updateAnimationsData() {
+    try {
+        const jsonData = document.getElementById('json-data').value;
+        const updatedAnimations = JSON.parse(jsonData);
+        
+        // 验证数据格式
+        if (!Array.isArray(updatedAnimations)) {
+            throw new Error('数据格式错误，必须是数组');
+        }
+        
+        // 更新动画数据
+        animations = updatedAnimations;
+        
+        // 保存到本地存储
+        localStorage.setItem('animations', JSON.stringify(animations));
+        
+        // 重新加载数据
+        filteredAnimations = [...animations];
+        applyFilters();
+        renderAnimationList();
+        updateStats();
+        
+        // 关闭模态框
+        closeUpdateDataModal();
+        
+        showMessage('数据更新成功！');
+    } catch (error) {
+        console.error('更新数据失败:', error);
+        showMessage('数据格式错误，请检查JSON格式', 'error');
+    }
+}
+
 // 验证密码
-function validatePassword() {
+async function validatePassword() {
     const password = document.getElementById('password').value;
     const errorElement = document.getElementById('password-error');
     
@@ -505,6 +587,9 @@ function validatePassword() {
         // 密码正确，显示管理后台
         document.getElementById('password-modal').style.display = 'none';
         document.querySelector('.admin-container').style.display = 'block';
+        
+        // 加载动画数据
+        await loadAnimationsFromJSON();
         
         // 初始化管理后台内容
         updateChapters();

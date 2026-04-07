@@ -1,0 +1,101 @@
+[
+    {
+        "id": "1-1-01-01",
+        "name": "有理数的加减法",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/b7m8g3k2",
+        "grade": "初一",
+        "semester": "上册",
+        "chapter": "第一章 有理数"
+    },
+    {
+        "id": "1-1-04-01",
+        "name": "整式的概念",
+        "type": "html",
+        "url": "animations/初一/上册/第四章_整式的加减/整式的概念.html",
+        "grade": "初一",
+        "semester": "上册",
+        "chapter": "第四章 整式的加减"
+    },
+    {
+        "id": "1-1-02-01",
+        "name": "一元一次方程的解法",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/w5h7f9k3",
+        "grade": "初一",
+        "semester": "上册",
+        "chapter": "第五章 一元一次方程"
+    },
+    {
+        "id": "1-2-01-01",
+        "name": "相交线与平行线",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/d4j6h7k1",
+        "grade": "初一",
+        "semester": "下册",
+        "chapter": "第七章 相交线与平行线"
+    },
+    {
+        "id": "1-2-02-01",
+        "name": "坐标系的建立",
+        "type": "html",
+        "url": "animations/初一/下册/第九章_平面直角坐标系/坐标系的建立.html",
+        "grade": "初一",
+        "semester": "下册",
+        "chapter": "第九章 平面直角坐标系"
+    },
+    {
+        "id": "2-1-01-01",
+        "name": "三角形的内角和",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/v8n5m2k9",
+        "grade": "初二",
+        "semester": "上册",
+        "chapter": "第十三章 三角形"
+    },
+    {
+        "id": "2-1-03-01",
+        "name": "笛卡尔心形曲线",
+        "type": "html",
+        "url": "animations/初二/上册/第十五章_轴对称/笛卡尔心形曲线.html",
+        "grade": "初二",
+        "semester": "上册",
+        "chapter": "第十五章 轴对称"
+    },
+    {
+        "id": "2-1-03-02",
+        "name": "轴对称图形验证工具",
+        "type": "html",
+        "url": "animations/初二/上册/第十五章_轴对称/轴对称图形验证工具.html",
+        "grade": "初二",
+        "semester": "上册",
+        "chapter": "第十五章 轴对称"
+    },
+    {
+        "id": "2-2-01-01",
+        "name": "勾股定理演示",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/c3d7f8k5",
+        "grade": "初二",
+        "semester": "下册",
+        "chapter": "第二十章 勾股定理"
+    },
+    {
+        "id": "2-2-02-01",
+        "name": "四边形及其内角和",
+        "type": "html",
+        "url": "animations/初二/下册/第二十一章_四边形/四边形及其内角和.html",
+        "grade": "初二",
+        "semester": "下册",
+        "chapter": "第二十一章 四边形"
+    },
+    {
+        "id": "3-1-01-01",
+        "name": "二次函数图像",
+        "type": "ggb",
+        "url": "https://www.geogebra.org/classic/k6m3h2k7",
+        "grade": "初三",
+        "semester": "上册",
+        "chapter": "第二十二章 二次函数"
+    }
+]

@@ -447,6 +447,9 @@
                 <button class="btn btn-primary" onclick="openAddAnimationModal()">
                     ➕ 添加新动画
                 </button>
+                <button class="btn btn-secondary" onclick="openUpdateDataModal()">
+                    🔄 更新数据
+                </button>
                 <a href="index.html" class="btn btn-secondary">
                     🏠 返回首页
                 </a>
@@ -532,6 +535,30 @@
                         <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 更新数据模态框 -->
+    <div id="update-data-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>更新动画数据</h2>
+                <span class="close" onclick="closeUpdateDataModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="json-data">动画数据 (JSON格式)</label>
+                    <textarea id="json-data" rows="20" style="font-family: monospace; font-size: 12px;"></textarea>
+                </div>
+                <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                    提示：修改JSON数据后，点击"更新数据"按钮将更新本地存储和网站显示。
+                    请注意保持JSON格式的正确性。
+                </p>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="updateAnimationsData()">更新数据</button>
+                    <button class="btn btn-secondary" onclick="closeUpdateDataModal()">取消</button>
+                </div>
             </div>
         </div>
     </div>

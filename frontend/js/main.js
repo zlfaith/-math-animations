@@ -1,120 +1,25 @@
 // 全局变量
 let currentAnimation = null;
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-let animations = JSON.parse(localStorage.getItem('animations')) || [];
+let animations = [];
 
-// 默认动画数据
-const defaultAnimations = [
-    {
-        id: '1-1-01-01',
-        name: '有理数的加减法',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/b7m8g3k2',
-        grade: '初一',
-        semester: '上册',
-        chapter: '第一章 有理数'
-    },
-    {
-        id: '1-1-04-01',
-        name: '整式的概念',
-        type: 'html',
-        url: 'animations/初一/上册/第四章_整式的加减/整式的概念.html',
-        grade: '初一',
-        semester: '上册',
-        chapter: '第四章 整式的加减'
-    },
-    {
-        id: '1-1-02-01',
-        name: '一元一次方程的解法',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/w5h7f9k3',
-        grade: '初一',
-        semester: '上册',
-        chapter: '第五章 一元一次方程'
-    },
-    {
-        id: '1-2-01-01',
-        name: '相交线与平行线',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/d4j6h7k1',
-        grade: '初一',
-        semester: '下册',
-        chapter: '第七章 相交线与平行线'
-    },
-    {
-        id: '1-2-02-01',
-        name: '坐标系的建立',
-        type: 'html',
-        url: 'animations/初一/下册/第九章_平面直角坐标系/坐标系的建立.html',
-        grade: '初一',
-        semester: '下册',
-        chapter: '第九章 平面直角坐标系'
-    },
-    {
-        id: '2-1-01-01',
-        name: '三角形的内角和',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/v8n5m2k9',
-        grade: '初二',
-        semester: '上册',
-        chapter: '第十三章 三角形'
-    },
-    {
-        id: '2-1-03-01',
-        name: '笛卡尔心形曲线',
-        type: 'html',
-        url: 'animations/初二/上册/第十五章_轴对称/笛卡尔心形曲线.html',
-        grade: '初二',
-        semester: '上册',
-        chapter: '第十五章 轴对称'
-    },
-    {
-        id: '2-1-03-02',
-        name: '轴对称图形验证工具',
-        type: 'html',
-        url: 'animations/初二/上册/第十五章_轴对称/轴对称图形验证工具.html',
-        grade: '初二',
-        semester: '上册',
-        chapter: '第十五章 轴对称'
-    },
-    {
-        id: '2-2-01-01',
-        name: '勾股定理演示',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/c3d7f8k5',
-        grade: '初二',
-        semester: '下册',
-        chapter: '第二十章 勾股定理'
-    },
-    {
-        id: '2-2-02-01',
-        name: '四边形及其内角和',
-        type: 'html',
-        url: 'animations/初二/下册/第二十一章_四边形/四边形及其内角和.html',
-        grade: '初二',
-        semester: '下册',
-        chapter: '第二十一章 四边形'
-    },
-    {
-        id: '3-1-01-01',
-        name: '二次函数图像',
-        type: 'ggb',
-        url: 'https://www.geogebra.org/classic/k6m3h2k7',
-        grade: '初三',
-        semester: '上册',
-        chapter: '第二十二章 二次函数'
+// 从JSON文件加载动画数据
+async function loadAnimationsFromJSON() {
+    try {
+        const response = await fetch('animations.json');
+        if (!response.ok) {
+            throw new Error('Failed to load animations.json');
+        }
+        const data = await response.json();
+        animations = data;
+        console.log('从JSON文件加载动画数据成功:', animations);
+        return true;
+    } catch (error) {
+        console.error('加载动画数据失败:', error);
+        // 如果JSON文件加载失败，使用本地存储的数据
+        animations = JSON.parse(localStorage.getItem('animations')) || [];
+        return false;
     }
-];
-
-// 初始化默认动画数据
-const DATA_VERSION = '4'; // 数据版本号，更新默认数据时递增
-const storedVersion = localStorage.getItem('animations_version');
-
-if (animations.length === 0 || storedVersion !== DATA_VERSION) {
-    animations = defaultAnimations;
-    localStorage.setItem('animations', JSON.stringify(animations));
-    localStorage.setItem('animations_version', DATA_VERSION);
-    console.log('已初始化默认动画数据 (版本:', DATA_VERSION, '):', animations);
 }
 
 // 构建教材体系数据
@@ -148,8 +53,9 @@ function buildTextbookData() {
 }
 
 // 初始化函数
-function init() {
+async function init() {
     console.log('开始初始化应用...');
+    await loadAnimationsFromJSON();
     renderNavigation();
     bindEvents();
     loadInitialAnimation();

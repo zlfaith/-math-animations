@@ -3,6 +3,30 @@ let currentAnimation = null;
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let animations = [];
 
+// 检测是否在部署环境（腾讯云）
+const isDeployed = window.location.host.includes('cloudbase') || window.location.host.includes('tencentcloud');
+
+// CloudBase配置
+let app = null;
+let db = null;
+let animationsCollection = null;
+
+// 初始化CloudBase
+function initCloudBase() {
+    if (isDeployed) {
+        try {
+            app = tcb.init({
+                env: 'math-animations-7ggh9q6lf3f13465' // 使用你的环境ID
+            });
+            db = app.database();
+            animationsCollection = db.collection('animations');
+            console.log('CloudBase初始化成功');
+        } catch (error) {
+            console.error('CloudBase初始化失败:', error);
+        }
+    }
+}
+
 // 从JSON文件加载动画数据
 async function loadAnimationsFromJSON() {
     try {
@@ -18,6 +42,63 @@ async function loadAnimationsFromJSON() {
         console.error('加载动画数据失败:', error);
         // 如果JSON文件加载失败，使用本地存储的数据
         animations = JSON.parse(localStorage.getItem('animations')) || [];
+        return false;
+    }
+}
+
+// 从CloudBase数据库加载动画数据
+async function loadAnimationsFromCloudBase() {
+    try {
+        if (!isDeployed || !animationsCollection) {
+            console.log('不在部署环境或CloudBase未初始化，跳过数据库加载');
+            return false;
+        }
+        
+        const result = await animationsCollection.get();
+        animations = result.data;
+        // 同步到本地存储
+        localStorage.setItem('animations', JSON.stringify(animations));
+        console.log('从CloudBase数据库加载动画数据成功:', animations);
+        return true;
+    } catch (error) {
+        console.error('从CloudBase数据库加载动画数据失败:', error);
+        // 如果数据库加载失败，尝试从JSON文件加载
+        return await loadAnimationsFromJSON();
+    }
+}
+
+// 保存动画数据到CloudBase数据库
+async function saveAnimationsToCloudBase() {
+    try {
+        if (!isDeployed || !animationsCollection) {
+            console.log('不在部署环境或CloudBase未初始化，跳过数据库保存');
+            return false;
+        }
+        
+        // 先清空现有数据
+        const countResult = await animationsCollection.count();
+        if (countResult.total > 0) {
+            const batch = db.batch();
+            const records = await animationsCollection.get();
+            records.data.forEach(record => {
+                batch.remove(record._id);
+            });
+            await batch.commit();
+        }
+        
+        // 批量添加新数据
+        if (animations.length > 0) {
+            const batch = db.batch();
+            animations.forEach(animation => {
+                batch.add(animationsCollection, animation);
+            });
+            await batch.commit();
+        }
+        
+        console.log('动画数据已保存到CloudBase数据库');
+        return true;
+    } catch (error) {
+        console.error('保存动画数据到CloudBase数据库失败:', error);
         return false;
     }
 }
@@ -55,7 +136,14 @@ function buildTextbookData() {
 // 初始化函数
 async function init() {
     console.log('开始初始化应用...');
-    await loadAnimationsFromJSON();
+    // 初始化CloudBase
+    initCloudBase();
+    // 优先从CloudBase数据库加载数据
+    const cloudLoaded = await loadAnimationsFromCloudBase();
+    // 如果CloudBase数据库加载失败，从JSON文件加载
+    if (!cloudLoaded) {
+        await loadAnimationsFromJSON();
+    }
     renderNavigation();
     bindEvents();
     loadInitialAnimation();

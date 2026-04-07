@@ -1,0 +1,119 @@
+[
+  {
+    "id": "1-1-01-01",
+    "name": "有理数的加减法",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/m/tce74scp",
+    "grade": "初一",
+    "semester": "上册",
+    "chapter": "第一章 有理数"
+  },
+  {
+    "id": "2-1-01-01",
+    "name": "三角形的内角和",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/classic/v8n5m2k9",
+    "grade": "初二",
+    "semester": "上册",
+    "chapter": "第十三章 三角形"
+  },
+  {
+    "id": "2-1-03-01",
+    "name": "笛卡尔心形曲线与轴对称",
+    "type": "html",
+    "url": "animations/初二/上册/第十五章_轴对称/笛卡尔心形曲线与轴对称.html",
+    "grade": "初二",
+    "semester": "上册",
+    "chapter": "第十五章 轴对称"
+  },
+  {
+    "id": "2-1-03-02",
+    "name": "轴对称图形验证工具",
+    "type": "html",
+    "url": "animations/初二/上册/第十五章_轴对称/轴对称图形验证工具.html",
+    "grade": "初二",
+    "semester": "上册",
+    "chapter": "第十五章 轴对称"
+  },
+  {
+    "id": "2-2-01-01",
+    "name": "杯子上的最短路径问题",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/m/jh8nj6w8",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十章 勾股定理"
+  },
+  {
+    "id": "2-2-02-01",
+    "name": "四边形及其内角和",
+    "type": "html",
+    "url": "animations/初二/下册/第二十一章_四边形/四边形及其内角和.html",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十一章 四边形"
+  },
+  {
+    "id": "2-2-38-5",
+    "name": "多边形内角和外角和验证",
+    "type": "external",
+    "url": "https://jiaohukejian.com/math/play/0JFPR2O/",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十一章 四边形"
+  },
+  {
+    "id": "2-2-63-1",
+    "name": "长方体上最短路径与勾股定理",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/m/b4p9pjxu",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十章 勾股定理"
+  },
+  {
+    "id": "2-2-58-4",
+    "name": "圆柱体上最短路径与勾股定理",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/m/rhgxrma4",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十章 勾股定理"
+  },
+  {
+    "id": "2-2-52-0",
+    "name": "平行四边形的性质",
+    "type": "ggb",
+    "url": "https://www.geogebra.org/m/gpsvjaka",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十一章 四边形"
+  },
+  {
+    "id": "2-2-22-0",
+    "name": "闵可夫斯基不等式",
+    "type": "ggb",
+    "url": "https://www.douyin.com/video/7602114770157771129?modeFrom=searchResult",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十章 勾股定理"
+  },
+  {
+    "id": "1-1-56-6",
+    "name": "测试",
+    "type": "external",
+    "url": "https://www.bilibili.com/video/BV1nC4y1q7f8?t=7.1",
+    "grade": "初一",
+    "semester": "上册",
+    "chapter": "第一章 有理数"
+  },
+  {
+    "id": "2-2-65-6",
+    "name": "矩形折叠问题",
+    "type": "external",
+    "url": "https://www.douyin.com/video/7624476150089223465?modeFrom=",
+    "grade": "初二",
+    "semester": "下册",
+    "chapter": "第二十章 勾股定理"
+  }
+]

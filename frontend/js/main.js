@@ -13,17 +13,34 @@ let animationsCollection = null;
 
 // 初始化CloudBase
 function initCloudBase() {
+    console.log('开始初始化CloudBase...');
+    console.log('部署环境检测:', isDeployed);
+    console.log('tcb是否存在:', typeof tcb !== 'undefined');
+    
     if (isDeployed) {
         try {
+            if (typeof tcb === 'undefined') {
+                console.error('CloudBase SDK未加载');
+                return;
+            }
+            
             app = tcb.init({
                 env: 'math-animations-7ggh9q6lf3f13465' // 使用你的环境ID
             });
+            console.log('CloudBase app初始化成功:', app);
+            
             db = app.database();
+            console.log('数据库初始化成功:', db);
+            
             animationsCollection = db.collection('animations');
+            console.log('集合初始化成功:', animationsCollection);
+            
             console.log('CloudBase初始化成功');
         } catch (error) {
             console.error('CloudBase初始化失败:', error);
         }
+    } else {
+        console.log('不在部署环境，跳过CloudBase初始化');
     }
 }
 
@@ -49,16 +66,26 @@ async function loadAnimationsFromJSON() {
 // 从CloudBase数据库加载动画数据
 async function loadAnimationsFromCloudBase() {
     try {
-        if (!isDeployed || !animationsCollection) {
-            console.log('不在部署环境或CloudBase未初始化，跳过数据库加载');
+        if (!isDeployed) {
+            console.log('不在部署环境，跳过数据库加载');
             return false;
         }
         
+        if (!animationsCollection) {
+            console.log('CloudBase未初始化，跳过数据库加载');
+            return false;
+        }
+        
+        console.log('开始从CloudBase数据库加载数据...');
         const result = await animationsCollection.get();
+        console.log('CloudBase返回结果:', result);
+        
         animations = result.data;
+        console.log('从CloudBase数据库加载到的动画数据:', animations);
+        
         // 同步到本地存储
         localStorage.setItem('animations', JSON.stringify(animations));
-        console.log('从CloudBase数据库加载动画数据成功:', animations);
+        console.log('动画数据已同步到本地存储');
         return true;
     } catch (error) {
         console.error('从CloudBase数据库加载动画数据失败:', error);

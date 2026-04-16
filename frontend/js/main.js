@@ -1,682 +1,843 @@
-// 全局变量
+// ============================================
+// 初中数学交互动画 - 主程序
+// 纯 CloudBase 版本
+// ============================================
+
+const CLOUDBASE_ENV = 'math-animations-2ga3njm77f3944eb';
 let currentAnimation = null;
-let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let animations = [];
-
-// 检测是否在部署环境（腾讯云）
-const isDeployed = window.location.host.includes('cloudbase') || window.location.host.includes('tencentcloud');
-
-// CloudBase配置
 let app = null;
 let db = null;
 let animationsCollection = null;
+let cloudBaseReady = false;
+let authUid = null;
 
-// 初始化CloudBase
-function initCloudBase() {
-    console.log('开始初始化CloudBase...');
-    console.log('部署环境检测:', isDeployed);
-    console.log('tcb是否存在:', typeof tcb !== 'undefined');
-    
-    if (isDeployed) {
-        try {
-            if (typeof tcb === 'undefined') {
-                console.error('CloudBase SDK未加载');
-                return;
-            }
-            
-            app = tcb.init({
-                env: 'math-animations-7ggh9q6lf3f13465' // 使用你的环境ID
-            });
-            console.log('CloudBase app初始化成功:', app);
-            
-            db = app.database();
-            console.log('数据库初始化成功:', db);
-            
-            animationsCollection = db.collection('animations');
-            console.log('集合初始化成功:', animationsCollection);
-            
-            console.log('CloudBase初始化成功');
-        } catch (error) {
-            console.error('CloudBase初始化失败:', error);
-        }
+// 章节数据结构 - 初始化为空对象，所有数据将从数据库加载
+let chapterData = {};
+
+// 章节数据集合
+let chaptersCollection = null;
+
+async function initCloudBase() {
+    if (cloudBaseReady) return true;
+
+    console.log('开始初始化 CloudBase...');
+    console.log('当前时间:', new Date().toLocaleString());
+    console.log('CLOUDBASE_ENV:', CLOUDBASE_ENV);
+    console.log('window.tcb:', typeof window.tcb, window.tcb ? '已加载' : '未加载');
+    console.log('window.cloudbase:', typeof window.cloudbase, window.cloudbase ? '已加载' : '未加载');
+
+    // 检查网络连接
+    if (navigator.onLine) {
+        console.log('网络连接状态: 在线');
     } else {
-        console.log('不在部署环境，跳过CloudBase初始化');
-    }
-}
-
-// 从JSON文件加载动画数据
-async function loadAnimationsFromJSON() {
-    try {
-        const response = await fetch('animations.json');
-        if (!response.ok) {
-            throw new Error('Failed to load animations.json');
-        }
-        const data = await response.json();
-        animations = data;
-        console.log('从JSON文件加载动画数据成功:', animations);
-        return true;
-    } catch (error) {
-        console.error('加载动画数据失败:', error);
-        // 如果JSON文件加载失败，使用本地存储的数据
-        animations = JSON.parse(localStorage.getItem('animations')) || [];
+        console.error('网络连接状态: 离线');
         return false;
     }
-}
 
-// 从CloudBase数据库加载动画数据
-async function loadAnimationsFromCloudBase() {
-    try {
-        if (!isDeployed) {
-            console.log('不在部署环境，跳过数据库加载');
-            return false;
-        }
-        
-        if (!animationsCollection) {
-            console.log('CloudBase未初始化，跳过数据库加载');
-            return false;
-        }
-        
-        console.log('开始从CloudBase数据库加载数据...');
-        const result = await animationsCollection.get();
-        console.log('CloudBase返回结果:', result);
-        
-        animations = result.data;
-        console.log('从CloudBase数据库加载到的动画数据:', animations);
-        
-        // 同步到本地存储
-        localStorage.setItem('animations', JSON.stringify(animations));
-        console.log('动画数据已同步到本地存储');
-        return true;
-    } catch (error) {
-        console.error('从CloudBase数据库加载动画数据失败:', error);
-        // 如果数据库加载失败，尝试从JSON文件加载
-        return await loadAnimationsFromJSON();
+    // 等待 SDK 加载
+    let attempts = 0;
+    const maxAttempts = 50; // 最多等待 5 秒
+
+    while (!(window.cloudbase || window.tcb) && attempts < maxAttempts) {
+        console.log('等待 SDK 加载中... 尝试次数:', attempts);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
     }
-}
 
-// 保存动画数据到CloudBase数据库
-async function saveAnimationsToCloudBase() {
-    try {
-        if (!isDeployed || !animationsCollection) {
-            console.log('不在部署环境或CloudBase未初始化，跳过数据库保存');
-            return false;
-        }
-        
-        // 先清空现有数据
-        const countResult = await animationsCollection.count();
-        if (countResult.total > 0) {
-            const batch = db.batch();
-            const records = await animationsCollection.get();
-            records.data.forEach(record => {
-                batch.remove(record._id);
-            });
-            await batch.commit();
-        }
-        
-        // 批量添加新数据
-        if (animations.length > 0) {
-            const batch = db.batch();
-            animations.forEach(animation => {
-                batch.add(animationsCollection, animation);
-            });
-            await batch.commit();
-        }
-        
-        console.log('动画数据已保存到CloudBase数据库');
-        return true;
-    } catch (error) {
-        console.error('保存动画数据到CloudBase数据库失败:', error);
+    console.log('等待后 - window.tcb:', typeof window.tcb, window.tcb ? '已加载' : '未加载');
+    console.log('等待后 - window.cloudbase:', typeof window.cloudbase, window.cloudbase ? '已加载' : '未加载');
+    console.log('总尝试次数:', attempts);
+
+    const sdk = window.cloudbase || window.tcb;
+    if (!sdk) {
+        console.error('CloudBase SDK 未加载，请检查网络连接或SDK URL是否正确');
         return false;
     }
-}
 
-// 构建教材体系数据
-function buildTextbookData() {
-    console.log('开始构建教材体系数据...');
-    const textbookData = {
-        "初一": { "上册": {}, "下册": {} },
-        "初二": { "上册": {}, "下册": {} },
-        "初三": { "上册": {}, "下册": {} }
-    };
-    
-    console.log('当前动画数据:', animations);
-    
-    // 遍历所有动画，构建数据结构
-    animations.forEach(animation => {
-        const { grade, semester, chapter, id, name, type, url } = animation;
-        console.log('处理动画:', { grade, semester, chapter, id, name });
-        
-        if (textbookData[grade] && textbookData[grade][semester]) {
-            if (!textbookData[grade][semester][chapter]) {
-                textbookData[grade][semester][chapter] = [];
+    try {
+        console.log('开始初始化 CloudBase 应用...');
+        app = sdk.init({
+            env: CLOUDBASE_ENV
+        });
+        console.log('CloudBase 应用初始化成功');
+
+        console.log('获取认证对象...');
+        const auth = app.auth();
+        console.log('认证对象获取成功');
+
+        console.log('检查登录状态...');
+        let loginState;
+        try {
+            loginState = await auth.getLoginState();
+            console.log('登录状态检查成功:', loginState ? '已登录' : '未登录');
+        } catch (loginError) {
+            console.error('登录状态检查失败:', loginError);
+            return false;
+        }
+
+        if (!loginState) {
+            console.log('执行匿名登录...');
+            try {
+                await auth.signInAnonymously();
+                console.log('匿名登录成功');
+            } catch (loginError) {
+                console.error('匿名登录失败:', loginError);
+                return false;
             }
-            textbookData[grade][semester][chapter].push({ id, name, type, url });
         } else {
-            console.warn('无效的教材数据:', { grade, semester });
+            console.log('已登录状态，无需重新登录');
         }
-    });
-    
-    console.log('构建完成的教材数据:', textbookData);
+
+        console.log('获取登录状态...');
+        let state;
+        try {
+            state = await auth.getLoginState();
+            console.log('登录状态获取成功:', state);
+        } catch (stateError) {
+            console.error('登录状态获取失败:', stateError);
+            return false;
+        }
+
+        // CloudBase返回的登录状态对象结构是 {user: {uid: ...}}
+        if (state && state.user && state.user.uid) {
+            authUid = state.user.uid;
+            console.log('用户 UID:', authUid);
+        } else if (state && state.uid) {
+            // 兼容旧版本SDK
+            authUid = state.uid;
+            console.log('用户 UID:', authUid);
+        } else {
+            console.error('获取用户 UID 失败，登录状态对象:', state);
+            return false;
+        }
+
+        console.log('初始化数据库...');
+        try {
+            db = app.database();
+            console.log('数据库初始化成功');
+        } catch (dbError) {
+            console.error('数据库初始化失败:', dbError);
+            return false;
+        }
+
+        console.log('初始化集合...');
+        try {
+            animationsCollection = db.collection('animations');
+            chaptersCollection = db.collection('chapters');
+            console.log('集合初始化成功');
+        } catch (collectionError) {
+            console.error('集合初始化失败:', collectionError);
+            return false;
+        }
+
+        cloudBaseReady = true;
+        console.log('CloudBase 初始化成功');
+        return true;
+    } catch (error) {
+        console.error('CloudBase 初始化失败:', error);
+        console.error('错误详情:', error.message);
+        console.error('错误堆栈:', error.stack);
+        return false;
+    }
+}
+async function loadAnimationsFromCloudBase() {
+    if (!animationsCollection) return false;
+
+    try {
+        const result = await animationsCollection.get();
+        if (result && result.data && Array.isArray(result.data)) {
+            animations = result.data;
+            console.log('从 CloudBase 加载动画数据成功，数量:', animations.length);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('从 CloudBase 加载动画数据失败:', error);
+        return false;
+    }
+}
+async function loadChaptersFromCloudBase() {
+    if (!chaptersCollection) return false;
+
+    try {
+        const result = await chaptersCollection.get();
+        if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+            const chapterDataFromDB = result.data[0];
+            if (chapterDataFromDB.data) {
+                // 确保章节数据的格式正确，将对象转换为数组
+                const normalizedData = JSON.parse(JSON.stringify(chapterDataFromDB.data));
+                // 检查并修复章节数据格式
+                for (const grade in normalizedData) {
+                    if (normalizedData.hasOwnProperty(grade)) {
+                        const gradeData = normalizedData[grade];
+                        for (const semester in gradeData) {
+                            if (gradeData.hasOwnProperty(semester)) {
+                                const chapters = gradeData[semester];
+                                // 如果章节数据是对象，转换为数组
+                                if (typeof chapters === 'object' && chapters !== null && !Array.isArray(chapters)) {
+                                    const chapterArray = [];
+                                    let index = 1;
+                                    const gradeMap = { '初一': 1, '初二': 2, '初三': 3 };
+                                    const semesterMap = { '上册': 1, '下册': 2 };
+                                    for (const key in chapters) {
+                                        if (chapters.hasOwnProperty(key)) {
+                                            // key是章节名称，如"第一章 有理数"
+                                            const chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${index}`;
+                                            chapterArray.push({
+                                                name: key,
+                                                id: chapterId
+                                            });
+                                            index++;
+                                        }
+                                    }
+                                    gradeData[semester] = chapterArray;
+                                } else if (Array.isArray(chapters)) {
+                                    // 确保每个章节都是对象，并且有 id 和 name 属性
+                                    chapters.forEach((chapter, index) => {
+                                        if (typeof chapter === 'string') {
+                                            // 生成章节 ID：年级-学期-章节索引
+                                            const gradeMap = { '初一': 1, '初二': 2, '初三': 3 };
+                                            const semesterMap = { '上册': 1, '下册': 2 };
+                                            const chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${index + 1}`;
+                                            gradeData[semester][index] = {
+                                                name: chapter,
+                                                id: chapterId
+                                            };
+                                        } else if (typeof chapter === 'object' && chapter !== null) {
+                                            // 确保章节对象有 id 属性
+                                            if (!chapter.id) {
+                                                // 生成章节 ID：年级-学期-章节索引
+                                                const gradeMap = { '初一': 1, '初二': 2, '初三': 3 };
+                                                const semesterMap = { '上册': 1, '下册': 2 };
+                                                const chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${index + 1}`;
+                                                chapter.id = chapterId;
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                chapterData = normalizedData;
+                console.log('从 CloudBase 加载章节数据成功');
+                return true;
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error('从 CloudBase 加载章节数据失败:', error);
+        return false;
+    }
+}
+function buildTextbookData() {
+    const textbookData = {
+        "初一": {
+            "上册": [
+                { id: "1-1-1", name: "第一章 有理数" },
+                { id: "1-1-2", name: "第二章 整式的加减" },
+                { id: "1-1-3", name: "第三章 一元一次方程" },
+                { id: "1-1-4", name: "第四章 几何图形初步" }
+            ],
+            "下册": [
+                { id: "1-2-1", name: "第五章 相交线与平行线" },
+                { id: "1-2-2", name: "第六章 实数" },
+                { id: "1-2-3", name: "第七章 平面直角坐标系" },
+                { id: "1-2-4", name: "第八章 二元一次方程组" },
+                { id: "1-2-5", name: "第九章 不等式与不等式组" },
+                { id: "1-2-6", name: "第十章 数据的收集、整理与描述" }
+            ]
+        },
+        "初二": {
+            "上册": [
+                { id: "2-1-1", name: "第十一章 三角形" },
+                { id: "2-1-2", name: "第十二章 全等三角形" },
+                { id: "2-1-3", name: "第十三章 轴对称" },
+                { id: "2-1-4", name: "第十四章 整式的乘法与因式分解" },
+                { id: "2-1-5", name: "第十五章 分式" }
+            ],
+            "下册": [
+                { id: "2-2-1", name: "第十六章 二次根式" },
+                { id: "2-2-2", name: "第十七章 勾股定理" },
+                { id: "2-2-3", name: "第十八章 平行四边形" },
+                { id: "2-2-4", name: "第十九章 一次函数" },
+                { id: "2-2-5", name: "第二十章 数据的分析" }
+            ]
+        },
+        "初三": {
+            "上册": [
+                { id: "3-1-1", name: "第二十一章 一元二次方程" },
+                { id: "3-1-2", name: "第二十二章 二次函数" },
+                { id: "3-1-3", name: "第二十三章 旋转" },
+                { id: "3-1-4", name: "第二十四章 圆" },
+                { id: "3-1-5", name: "第二十五章 概率初步" }
+            ],
+            "下册": [
+                { id: "3-2-1", name: "第二十六章 反比例函数" },
+                { id: "3-2-2", name: "第二十七章 相似" },
+                { id: "3-2-3", name: "第二十八章 锐角三角函数" },
+                { id: "3-2-4", name: "第二十九章 投影与视图" }
+            ]
+        }
+    };
+
     return textbookData;
 }
-
-// 初始化函数
-async function init() {
-    console.log('开始初始化应用...');
-    // 初始化CloudBase
-    initCloudBase();
-    // 优先从CloudBase数据库加载数据
-    const cloudLoaded = await loadAnimationsFromCloudBase();
-    // 如果CloudBase数据库加载失败，从JSON文件加载
-    if (!cloudLoaded) {
-        await loadAnimationsFromJSON();
-    }
-    renderNavigation();
-    bindEvents();
-    loadInitialAnimation();
-    console.log('应用初始化完成');
-}
-
-// 渲染导航菜单
 function renderNavigation() {
-    console.log('开始渲染导航菜单...');
     const navMenu = document.getElementById('nav-menu');
-    let html = '';
-    const textbookData = buildTextbookData();
-    
-    console.log('渲染导航菜单，教材数据:', textbookData);
-    
-    for (const grade in textbookData) {
-        html += `<ul>
-            <li>
-                <a href="#" class="grade-link" data-grade="${grade}">${grade}</a>
-                <ul class="sub-menu">`;
+    if (!navMenu) return;
+
+    let html = '<ul>';
+
+    // 按固定顺序遍历年级：初一、初二、初三
+    const grades = ['初一', '初二', '初三'];
+    grades.forEach(grade => {
+        // 确保年级数据存在
+        if (!chapterData[grade]) {
+            chapterData[grade] = {
+                '上册': [],
+                '下册': []
+            };
+        }
         
-        for (const semester in textbookData[grade]) {
+        html += `<li>
+            <a href="#" class="grade-link" data-grade="${grade}">${grade}</a>
+            <ul class="sub-menu">`;
+
+        // 按固定顺序遍历学期：上册、下册
+        const semesters = ['上册', '下册'];
+        semesters.forEach(semester => {
+            // 确保学期数据存在
+            if (!chapterData[grade][semester]) {
+                chapterData[grade][semester] = [];
+            }
+            
             html += `<li>
                 <a href="#" class="semester-link" data-grade="${grade}" data-semester="${semester}">${semester}</a>
                 <ul class="sub-sub-menu">`;
-            
-            for (const chapter in textbookData[grade][semester]) {
-                html += `<li>
-                    <a href="#" class="chapter-link" data-grade="${grade}" data-semester="${semester}" data-chapter="${chapter}">${chapter}</a>
-                    <ul class="animation-list">`;
+
+            // 遍历章节
+            chapterData[grade][semester].forEach((chapter, index) => {
+                // 获取章节名称和 id
+                let chapterName = chapter;
+                let chapterId = '';
                 
-                textbookData[grade][semester][chapter].forEach(animation => {
-                    html += `<li>
-                        <a href="#" class="animation-link" data-id="${animation.id}" data-type="${animation.type}" data-url="${animation.url}">${animation.name}</a>
-                    </li>`;
-                });
+                if (typeof chapter === 'object' && chapter !== null) {
+                    chapterName = chapter.name || chapter;
+                    chapterId = chapter.id || '';
+                }
                 
-                html += `</ul>
-                </li>`;
-            }
-            
-            html += `</ul>
-            </li>`;
-        }
-        
-        html += `</ul>
-            </li>
-        </ul>`;
-    }
-    
+                // 如果章节没有 id，生成章节 ID：年级-学期-章节索引
+                if (!chapterId) {
+                    const gradeMap = { '初一': 1, '初二': 2, '初三': 3 };
+                    const semesterMap = { '上册': 1, '下册': 2 };
+                    chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${index + 1}`;
+                }
+                
+                html += `<li><a href="#" class="chapter-link" data-grade="${grade}" data-semester="${semester}" data-chapter="${chapterName}" data-chapter-id="${chapterId}">${chapterName}</a><ul class="animation-list"></ul></li>`;
+            });
+
+            html += '</ul></li>';
+        });
+
+        html += '</ul></li>';
+    });
+
+    html += '</ul>';
+
     navMenu.innerHTML = html;
-    console.log('导航菜单渲染完成');
+    
+    // 手动绑定事件，确保事件绑定正确
+    bindEvents();
 }
-
-// 绑定事件
 function bindEvents() {
-    console.log('开始绑定事件...');
-    // 导航菜单展开/折叠
-    document.querySelectorAll('.grade-link, .semester-link, .chapter-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const subMenu = this.nextElementSibling;
+    const navMenu = document.getElementById('nav-menu');
+    if (!navMenu) {
+        console.error('nav-menu元素不存在');
+        return;
+    }
+    console.log('bindEvents: nav-menu元素存在');
+
+    navMenu.addEventListener('click', function(e) {
+        console.log('bindEvents: 点击事件触发');
+        console.log('bindEvents: 点击目标:', e.target);
+        
+        const link = e.target.closest('a');
+        if (!link) {
+            console.log('bindEvents: 点击目标不是链接');
+            return;
+        }
+        console.log('bindEvents: 点击的链接:', link);
+        console.log('bindEvents: 链接类名:', link.className);
+
+        e.preventDefault();
+
+        if (link.classList.contains('grade-link') || link.classList.contains('semester-link')) {
+            console.log('bindEvents: 点击的是展开/收起链接:', link.textContent);
+            const subMenu = link.nextElementSibling;
+            console.log('bindEvents: 子菜单元素:', subMenu);
             if (subMenu) {
-                subMenu.style.display = subMenu.style.display === 'block' ? 'none' : 'block';
-                console.log('切换菜单显示状态:', this.textContent, '->', subMenu.style.display);
+                console.log('bindEvents: 子菜单当前类名:', subMenu.className);
+                subMenu.classList.toggle('show');
+                link.classList.toggle('active');
+                console.log('bindEvents: 子菜单新类名:', subMenu.className);
+                console.log('bindEvents: 链接新类名:', link.className);
+            } else {
+                console.log('bindEvents: 没有找到子菜单元素');
             }
-        });
-    });
-    
-    // 动画链接点击
-    document.querySelectorAll('.animation-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const id = this.getAttribute('data-id');
-            const type = this.getAttribute('data-type');
-            const url = this.getAttribute('data-url');
-            console.log('点击动画链接:', { id, type, url, name: this.textContent });
+        } else if (link.classList.contains('chapter-link')) {
+            console.log('bindEvents: 点击的是章节链接:', link.textContent);
+            const subMenu = link.nextElementSibling;
+            console.log('bindEvents: 子菜单元素:', subMenu);
+            if (subMenu) {
+                link.classList.toggle('active');
+                const grade = link.getAttribute('data-grade');
+                const semester = link.getAttribute('data-semester');
+                const chapter = link.getAttribute('data-chapter');
+                const chapterId = link.getAttribute('data-chapter-id');
+                console.log('bindEvents: 加载章节动画:', grade, semester, chapter, chapterId);
+                loadChapterAnimations(grade, semester, chapter, chapterId, subMenu);
+            }
+        } else if (link.classList.contains('animation-link')) {
+            console.log('bindEvents: 点击的是动画链接:', link.textContent);
+            const id = link.getAttribute('data-id');
+            const type = link.getAttribute('data-type');
+            const url = link.getAttribute('data-url');
             loadAnimation(type, url, id);
-            
-            // 标记当前选中项
+
             document.querySelectorAll('.animation-link').forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-    
-    // 搜索功能
-    document.getElementById('search-btn').addEventListener('click', function() {
-        const searchTerm = document.getElementById('search-input').value.trim();
-        console.log('点击搜索按钮，搜索词:', searchTerm);
-        searchAnimations(searchTerm);
-    });
-    
-    document.getElementById('search-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            const searchTerm = this.value.trim();
-            console.log('回车搜索，搜索词:', searchTerm);
-            searchAnimations(searchTerm);
+            link.classList.add('active');
         }
     });
-    
-    // 控制按钮
-    document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
-    document.getElementById('refresh-btn').addEventListener('click', refreshAnimation);
-    document.getElementById('favorite-btn').addEventListener('click', toggleFavorite);
-    console.log('事件绑定完成');
-}
 
-// 全局变量存储 GeoGebra applet 实例
-let ggbApplet = null;
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
 
-// 检查 GeoGebra API 是否加载完成的函数
-function checkGeoGebraAPI(callback) {
-    if (typeof GGBApplet !== 'undefined') {
-        console.log('GeoGebra API 已加载');
-        callback();
-    } else {
-        console.log('等待 GeoGebra API 加载...');
-        // 最多尝试 10 次，每次间隔 500ms
-        let attempts = 0;
-        const maxAttempts = 10;
-        const interval = setInterval(() => {
-            attempts++;
-            if (typeof GGBApplet !== 'undefined') {
-                clearInterval(interval);
-                console.log('GeoGebra API 加载完成');
-                callback();
-            } else if (attempts >= maxAttempts) {
-                clearInterval(interval);
-                console.error('GeoGebra API 加载超时');
-                callback(false);
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+            searchAnimations(searchInput ? searchInput.value.trim() : '');
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchAnimations(this.value.trim());
             }
-        }, 500);
+        });
+    }
+
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const openNewWindowBtn = document.getElementById('open-new-window-btn');
+
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+    if (refreshBtn) refreshBtn.addEventListener('click', refreshAnimation);
+    if (openNewWindowBtn && !openNewWindowBtn._hasClickListener) {
+        openNewWindowBtn._hasClickListener = true;
+        openNewWindowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentAnimation && currentAnimation.url) {
+                window.open(currentAnimation.url, '_blank');
+            }
+        });
     }
 }
-
-// 加载动画
 function loadAnimation(type, url, id) {
-    console.log('开始加载动画:', { id, type, url });
     const container = document.getElementById('animation-content');
     const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
+    const openNewWindowBtn = document.getElementById('open-new-window-btn');
 
-    // 显示加载状态
+    if (!container || !loading) return;
+
     loading.style.display = 'block';
-    error.style.display = 'none';
     container.innerHTML = '';
 
-    // 清理之前的 GeoGebra applet
-    if (ggbApplet) {
-        ggbApplet = null;
+    currentAnimation = { id, type, url };
+
+    // 显示或隐藏"在新窗口打开"按钮
+    if (openNewWindowBtn) {
+        if (type === 'external' || type === 'ggb' || url.includes('douyin.com') || url.includes('iesdouyin.com')) {
+            openNewWindowBtn.style.display = 'inline-block';
+        } else {
+            openNewWindowBtn.style.display = 'none';
+        }
     }
 
-    // 保存当前动画信息
-    currentAnimation = { id, type, url };
-    console.log('当前动画设置为:', currentAnimation);
-
-    // 更新收藏按钮状态
-    updateFavoriteButton();
-
-    // 根据类型加载动画
     setTimeout(() => {
         try {
-            // 首先检查是否为抖音链接，无论type是什么
+            if (!url) {
+                loading.style.display = 'none';
+                return;
+            }
+
             if (url.includes('douyin.com') || url.includes('iesdouyin.com')) {
-                // 对于抖音链接，显示提示和跳转按钮
-                console.log('加载抖音视频链接:', url);
                 container.innerHTML = `
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
                         <h3>抖音视频链接</h3>
                         <p style="margin: 20px 0;">由于抖音的安全策略，无法直接在页面中嵌入视频</p>
-                        <a href="${url}" target="_blank" style="display: inline-block; padding: 10px 20px; background-color: #0088cc; color: white; text-decoration: none; border-radius: 4px; margin: 10px;">在新窗口打开</a>
+                        <p style="margin: 10px 0; color: #666;">点击下方"在新窗口打开"按钮查看</p>
                     </div>
                 `;
                 loading.style.display = 'none';
             } else if (type === 'ggb') {
-                // 加载GGB动画 - 使用 GeoGebra API
-                console.log('加载GGB动画:', url);
-                checkGeoGebraAPI((success) => {
-                    if (success !== false) {
-                        loadGeoGebraApplet(url, container);
-                    } else {
-                        console.error('GeoGebra API 加载失败');
-                        container.innerHTML = '<div style="color: red; padding: 20px;">GeoGebra API 加载失败，请检查网络连接后刷新页面重试</div>';
+                loadGeoGebraApplet(url, container);
+            } else if (type === 'external') {
+                // 外部链接，检查是否是抖音（抖音不支持嵌入）
+                const isDouyin = url.includes('douyin.com') || url.includes('iesdouyin.com');
+                
+                if (isDouyin) {
+                    // 抖音不支持嵌入，显示提示
+                    container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
+                            <h3>抖音视频链接</h3>
+                            <p style="margin: 20px 0;">由于抖音的安全策略，无法直接在页面中嵌入视频</p>
+                            <p style="margin: 10px 0; color: #666;">点击下方"在新窗口打开"按钮查看</p>
+                        </div>
+                    `;
+                    loading.style.display = 'none';
+                } else if (url.includes('bilibili.com')) {
+                    // Bilibili使用官方嵌入代码格式
+                    let embedUrl = url;
+                    // 提取bvid并转换为官方嵌入格式
+                    const bvidMatch = url.match(/bvid=([\w]+)/i) || url.match(/BV[\w]+/);
+                    if (bvidMatch) {
+                        const bvid = bvidMatch[1] || bvidMatch[0];
+                        embedUrl = `https://player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1&danmaku=0&isOutside=true`;
+                    }
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.src = embedUrl;
+                    iframe.allowFullscreen = true;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.scrolling = 'no';
+                    iframe.frameBorder = '0';
+                    iframe.framespacing = '0';
+                    
+                    // 监听iframe加载完成
+                    iframe.onload = function() {
+                        loading.style.display = 'none';
+                    };
+                    
+                    // 监听iframe加载错误
+                    iframe.onerror = function() {
+                        loading.style.display = 'none';
+                    };
+                    
+                    container.innerHTML = '';
+                    container.appendChild(iframe);
+                } else {
+                    // 尝试iframe嵌入其他网站
+                    const iframe = document.createElement('iframe');
+                    iframe.src = url;
+                    iframe.allowFullscreen = true;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    
+                    // 监听iframe加载完成
+                    iframe.onload = function() {
+                        loading.style.display = 'none';
+                    };
+                    
+                    // 监听iframe加载错误
+                    iframe.onerror = function() {
+                        loading.style.display = 'none';
+                    };
+                    
+                    container.innerHTML = '';
+                    container.appendChild(iframe);
+                }
+            } else {
+                // 本地HTML文件
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.allowFullscreen = true;
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                
+                // 监听加载完成
+                iframe.onload = function() {
+                    loading.style.display = 'none';
+                };
+                
+                // 监听加载错误
+                iframe.onerror = function() {
+                    container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
+                            <h3>文件加载失败</h3>
+                            <p style="margin: 20px 0;">无法加载动画文件，请检查文件是否存在</p>
+                            <p style="margin: 10px 0; color: #666;">文件路径：${url}</p>
+                        </div>
+                    `;
+                    loading.style.display = 'none';
+                };
+                
+                container.innerHTML = '';
+                container.appendChild(iframe);
+                
+                // 设置超时检查
+                setTimeout(() => {
+                    if (loading.style.display !== 'none') {
                         loading.style.display = 'none';
                     }
-                });
-            } else if (type === 'html' || type === 'external' || type === 'video') {
-                // 加载本地HTML动画、外部网站动画或视频链接
-                console.log('加载HTML/外部/视频动画:', url);
-                // 其他链接正常使用iframe加载
-                container.innerHTML = `<iframe src="${url}" allowfullscreen style="width: 100%; height: 100%; border: none;"></iframe>`;
-                loading.style.display = 'none';
-            } else {
-                console.warn('未知动画类型:', type);
-                loading.style.display = 'none';
+                }, 5000);
             }
         } catch (e) {
             loading.style.display = 'none';
-            error.style.display = 'block';
             console.error('加载动画失败:', e);
         }
     }, 500);
 }
 
-// 使用 GeoGebra API 加载 applet
+// 显示外部链接的备用方案（提示用户在控制栏点击按钮）
+function showExternalLinkFallback(url, container, loading) {
+    console.log('外部链接无法嵌入，显示备用方案:', url);
+    const isGeoGebra = url.includes('geogebra.org');
+    const title = isGeoGebra ? 'GeoGebra 动画' : '外部网站链接';
+    const message = isGeoGebra 
+        ? 'GeoGebra 动画加载超时或失败' 
+        : '该网站不允许在页面中嵌入';
+    
+    container.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 20px;">
+            <h3>${title}</h3>
+            <p style="margin: 20px 0;">${message}</p>
+            <p style="margin: 10px 0; color: #666;">点击下方"在新窗口打开"按钮查看</p>
+        </div>
+    `;
+    if (loading) loading.style.display = 'none';
+}
+
 function loadGeoGebraApplet(url, container) {
-    // 从 URL 中提取 material ID
-    // GeoGebra URL 格式: https://www.geogebra.org/classic/b7m8g3k2
-    // Material ID 是最后一部分
-    console.log('原始 URL:', url);
     const materialId = extractMaterialId(url);
-    console.log('提取的 Material ID:', materialId);
-    console.log('测试 Material ID 有效性:', materialId && materialId.length >= 6);
+    console.log('loadGeoGebraApplet: URL:', url);
+    console.log('loadGeoGebraApplet: Material ID:', materialId);
 
     if (!materialId) {
-        console.error('无法从 URL 提取 Material ID:', url);
         container.innerHTML = '<div style="color: red; padding: 20px;">无效的 GeoGebra URL</div>';
         document.getElementById('loading').style.display = 'none';
         return;
     }
 
-    // 使用 GeoGebra API 加载
-    try {
-        console.log('使用 GeoGebra API 加载');
-        
-        // 创建 applet 容器
-        const appletContainer = document.createElement('div');
-        appletContainer.id = 'ggb-applet-container';
-        appletContainer.style.width = '100%';
-        appletContainer.style.height = '100%';
-        container.appendChild(appletContainer);
-
-        // 配置 GeoGebra applet 参数
-        const parameters = {
-            id: 'ggbApplet',
-            material_id: materialId,
-            width: container.clientWidth || 800,
-            height: container.clientHeight || 600,
-            showToolBar: true,
-            showAlgebraInput: true,
-            showMenuBar: true,
-            enableRightClick: true,
-            enableShiftDragZoom: true,
-            showResetIcon: true,
-            language: 'zh-CN',
-            country: 'CN',
-            allowStyleBar: true,
-            useBrowserForJS: false,
-            borderColor: '#CCCCCC',
-            showFullscreenButton: true
-        };
-
-        // applet 加载完成的回调
-        const appletLoaded = function() {
-            console.log('GeoGebra Applet 加载完成');
-            ggbApplet = document.getElementById('ggbApplet');
-            document.getElementById('loading').style.display = 'none';
-        };
-
-        // 创建 applet
-        const views = { 'is3D': 0, 'AV': 1, 'SV': 0, 'CV': 0, 'EV2': 0, 'CP': 0, 'PC': 0, 'DA': 0, 'FI': 0, 'PV': 0 };
-
-        if (typeof GGBApplet !== 'undefined') {
-            const applet = new GGBApplet(parameters, '5.0', views);
-            applet.setHTML5Codebase('https://www.geogebra.org/apps/5.0.803.0/web3d');
-            applet.inject(appletContainer.id, 'html5', appletLoaded);
-        } else {
-            console.error('GeoGebra API 未加载');
-            container.innerHTML = '<div style="color: red; padding: 20px;">GeoGebra API 加载失败，请刷新页面重试</div>';
-            document.getElementById('loading').style.display = 'none';
-        }
-    } catch (e) {
-        console.error('加载 GeoGebra Applet 失败:', e);
-        container.innerHTML = '<div style="color: red; padding: 20px;">加载 GeoGebra 应用失败，请刷新页面重试</div>';
+    // 使用iframe嵌入GeoGebra
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.allowFullscreen = true;
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    
+    // 监听iframe加载完成
+    iframe.onload = function() {
+        console.log('GeoGebra iframe 加载完成');
         document.getElementById('loading').style.display = 'none';
-    }
+    };
+    
+    // 监听iframe加载错误
+    iframe.onerror = function() {
+        console.error('GeoGebra iframe 加载失败');
+        // 加载失败时显示提示，但不替换iframe
+        document.getElementById('loading').style.display = 'none';
+    };
+    
+    container.innerHTML = '';
+    container.appendChild(iframe);
 }
-
-// 从 GeoGebra URL 中提取 Material ID
 function extractMaterialId(url) {
-    // 支持多种 URL 格式
-    // https://www.geogebra.org/classic/b7m8g3k2
-    // https://www.geogebra.org/m/b7m8g3k2
-    // https://www.geogebra.org/classic#matrix/b7m8g3k2
-
     if (!url) return null;
-
-    // 移除末尾的斜杠
     url = url.replace(/\/$/, '');
 
-    // 尝试从 URL 中提取 ID
     const patterns = [
-        /geogebra\.org\/classic\/(\w+)$/,
-        /geogebra\.org\/m\/(\w+)$/,
-        /geogebra\.org\/classic#matrix\/(\w+)$/,
-        /geogebra\.org\/classic#(\w+)$/,
-        /\/([a-zA-Z0-9]{8,})$/  // 通用模式，匹配最后8位以上的字母数字组合
+        /geogebra\.org\/classic\/([a-zA-Z0-9]+)$/,
+        /geogebra\.org\/m\/([a-zA-Z0-9]+)$/,
+        /\/([a-zA-Z0-9]{8,})$/
     ];
 
     for (const pattern of patterns) {
         const match = url.match(pattern);
-        if (match) {
-            return match[1];
-        }
+        if (match) return match[1];
     }
 
-    // 如果都不匹配，尝试直接返回 URL 的最后一部分
     const parts = url.split('/');
-    const lastPart = parts[parts.length - 1];
-    if (lastPart && lastPart.length >= 8) {
-        return lastPart;
-    }
-
-    return null;
+    return parts[parts.length - 1];
 }
-
-// 加载初始动画
-function loadInitialAnimation() {
-    console.log('开始加载初始动画...');
-    // 加载第一个动画
-    const textbookData = buildTextbookData();
-    const firstGrade = Object.keys(textbookData)[0];
-    console.log('第一个年级:', firstGrade);
-    
-    if (firstGrade) {
-        const firstSemester = Object.keys(textbookData[firstGrade])[0];
-        console.log('第一个学期:', firstSemester);
-        
-        if (firstSemester) {
-            const firstChapter = Object.keys(textbookData[firstGrade][firstSemester])[0];
-            console.log('第一章:', firstChapter);
-            
-            if (firstChapter) {
-                const firstAnimation = textbookData[firstGrade][firstSemester][firstChapter][0];
-                console.log('第一个动画:', firstAnimation);
-                
-                if (firstAnimation) {
-                    loadAnimation(firstAnimation.type, firstAnimation.url, firstAnimation.id);
-                } else {
-                    console.warn('没有找到第一个动画');
-                }
-            } else {
-                console.warn('没有找到第一章');
-            }
-        } else {
-            console.warn('没有找到第一个学期');
-        }
-    } else {
-        console.warn('没有找到第一个年级');
-    }
-}
-
-// 搜索动画
 function searchAnimations(term) {
     if (!term) return;
-    console.log('开始搜索动画，搜索词:', term);
-    
-    const results = [];
-    const textbookData = buildTextbookData();
-    
-    // 遍历所有动画
-    for (const grade in textbookData) {
-        for (const semester in textbookData[grade]) {
-            for (const chapter in textbookData[grade][semester]) {
-                textbookData[grade][semester][chapter].forEach(animation => {
-                    if (
-                        grade.includes(term) ||
-                        semester.includes(term) ||
-                        chapter.includes(term) ||
-                        animation.name.includes(term)
-                    ) {
-                        results.push({
-                            grade,
-                            semester,
-                            chapter,
-                            ...animation
-                        });
-                    }
-                });
-            }
-        }
-    }
-    
-    console.log('搜索结果:', results);
-    // 显示搜索结果
+
+    const results = animations.filter(animation => {
+        return animation.grade.includes(term) ||
+               animation.semester.includes(term) ||
+               animation.chapter.includes(term) ||
+               animation.name.includes(term);
+    });
+
     if (results.length > 0) {
-        // 加载第一个搜索结果
-        const firstResult = results[0];
-        console.log('加载第一个搜索结果:', firstResult);
-        loadAnimation(firstResult.type, firstResult.url, firstResult.id);
-        
-        // 展开对应的导航菜单
-        const gradeLink = document.querySelector(`.grade-link[data-grade="${firstResult.grade}"]`);
-        const semesterLink = document.querySelector(`.semester-link[data-grade="${firstResult.grade}"][data-semester="${firstResult.semester}"]`);
-        const chapterLink = document.querySelector(`.chapter-link[data-grade="${firstResult.grade}"][data-semester="${firstResult.semester}"][data-chapter="${firstResult.chapter}"]`);
-        
-        // 强制展开所有相关菜单，而不是切换状态
-        if (gradeLink) {
-            const gradeSubMenu = gradeLink.nextElementSibling;
-            if (gradeSubMenu) gradeSubMenu.style.display = 'block';
-        }
-        
-        if (semesterLink) {
-            const semesterSubMenu = semesterLink.nextElementSibling;
-            if (semesterSubMenu) semesterSubMenu.style.display = 'block';
-        }
-        
-        if (chapterLink) {
-            const chapterSubMenu = chapterLink.nextElementSibling;
-            if (chapterSubMenu) chapterSubMenu.style.display = 'block';
-        }
-        
-        // 标记选中的动画
-        document.querySelectorAll('.animation-link').forEach(link => {
-            if (link.getAttribute('data-id') === firstResult.id) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
+        const first = results[0];
+        loadAnimation(first.type, first.url, first.id);
+
+        document.querySelectorAll('.sub-menu, .sub-sub-menu').forEach(menu => {
+            menu.style.display = 'block';
         });
-    } else {
-        console.log('未找到相关动画资源');
-        showMessage('未找到相关动画资源');
     }
 }
-
-// 切换全屏
 function toggleFullscreen() {
-    console.log('切换全屏状态');
     const container = document.getElementById('animation-container');
-    
+    if (!container) return;
+
     if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => {
-            console.error(`全屏错误: ${err.message}`);
-        });
-        console.log('进入全屏');
+        container.requestFullscreen().catch(err => console.error('全屏错误:', err));
     } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-            console.log('退出全屏');
-        }
+        document.exitFullscreen();
     }
 }
-
-// 刷新动画
 function refreshAnimation() {
-    console.log('刷新动画');
     if (currentAnimation) {
-        console.log('当前动画:', currentAnimation);
         loadAnimation(currentAnimation.type, currentAnimation.url, currentAnimation.id);
+    }
+}
+async function loadChapterAnimations(grade, semester, chapter, chapterId, animationListElement) {
+    console.log('loadChapterAnimations: 开始加载章节动画');
+    console.log('loadChapterAnimations: 参数:', grade, semester, chapter, chapterId);
+    console.log('loadChapterAnimations: 动画列表元素:', animationListElement);
+    console.log('loadChapterAnimations: 当前动画数量:', animations.length);
+    
+    if (animations.length === 0) {
+        console.log('loadChapterAnimations: 动画数组为空，加载数据');
+        await loadData();
+        console.log('loadChapterAnimations: 加载数据后动画数量:', animations.length);
+    }
+
+    console.log('loadChapterAnimations: 所有动画数据:', animations);
+    
+    // 使用 chapterId 字段匹配动画数据
+    let chapterAnimations = animations.filter(animation => {
+        const match = animation.chapterId === chapterId;
+        console.log('loadChapterAnimations: 筛选动画:', animation.name, 
+                    '动画chapterId:', animation.chapterId, '目标chapterId:', chapterId, '匹配:', match);
+        return match;
+    });
+
+    console.log('loadChapterAnimations: 筛选出的动画数量:', chapterAnimations.length);
+    console.log('loadChapterAnimations: 筛选出的动画:', chapterAnimations);
+
+    let html = '';
+    if (chapterAnimations.length > 0) {
+        chapterAnimations.forEach(animation => {
+            html += `<li><a href="#" class="animation-link" data-id="${animation.id}" data-type="${animation.type}" data-url="${animation.url}">${animation.name}</a></li>`;
+        });
     } else {
-        console.warn('没有当前动画可刷新');
+        html = '<li class="no-animation">该章节暂无动画</li>';
+    }
+
+    if (animationListElement) {
+        console.log('loadChapterAnimations: 设置动画列表HTML:', html);
+        animationListElement.innerHTML = html;
+        // 添加 show 类以显示动画列表
+        animationListElement.classList.add('show');
+        console.log('loadChapterAnimations: 动画列表HTML已设置，内容:', animationListElement.innerHTML);
+    } else {
+        console.error('loadChapterAnimations: 动画列表元素不存在');
+    }
+}
+function loadInitialAnimation() {
+    console.log('初始加载完成，等待用户点击章节');
+}
+async function loadData() {
+    const ready = await initCloudBase();
+    if (ready) {
+        // 加载章节数据
+        const chaptersLoaded = await loadChaptersFromCloudBase();
+        if (chaptersLoaded) {
+            console.log('章节数据加载成功，重新渲染导航栏...');
+        } else {
+            console.log('章节数据加载失败，使用默认章节数据...');
+        }
+        renderNavigation();
+        
+        const animationsLoaded = await loadAnimationsFromCloudBase();
+        if (!animationsLoaded) {
+            console.log('从CloudBase加载动画数据失败，尝试从本地文件加载...');
+            await loadAnimationsFromLocalFile();
+        }
+    } else {
+        console.log('CloudBase初始化失败，尝试从本地文件加载数据...');
+        await loadAnimationsFromLocalFile();
+        renderNavigation();
     }
 }
 
-// 切换收藏状态
-function toggleFavorite() {
-    if (!currentAnimation) {
-        console.warn('没有当前动画可收藏');
+async function loadAnimationsFromLocalFile() {
+    try {
+        console.log('开始从本地文件加载动画数据...');
+        const response = await fetch('animations.json');
+        if (!response.ok) {
+            throw new Error('网络响应失败');
+        }
+        const data = await response.json();
+        if (Array.isArray(data)) {
+            animations = data;
+            console.log('从本地文件加载动画数据成功，数量:', animations.length);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('从本地文件加载动画数据失败:', error);
+        return false;
+    }
+}
+async function init() {
+    console.log('init: 开始初始化');
+    console.log('init: document.readyState:', document.readyState);
+    console.log('init: nav-menu元素:', document.getElementById('nav-menu'));
+    
+    // 等待DOM完全加载
+    if (document.readyState === 'loading') {
+        console.log('init: 等待DOM加载完成...');
+        await new Promise(resolve => {
+            document.addEventListener('DOMContentLoaded', resolve);
+        });
+        console.log('init: DOM加载完成');
+    }
+    
+    console.log('init: DOM已完全加载');
+    console.log('init: nav-menu元素:', document.getElementById('nav-menu'));
+    
+    // 检查nav-menu元素是否存在
+    const navMenu = document.getElementById('nav-menu');
+    if (!navMenu) {
+        console.error('init: nav-menu元素不存在');
         return;
     }
     
-    console.log('切换收藏状态，当前动画:', currentAnimation);
-    const index = favorites.findIndex(item => item.id === currentAnimation.id);
-    if (index === -1) {
-        // 添加到收藏
-        favorites.push(currentAnimation);
-        console.log('添加到收藏:', currentAnimation);
-    } else {
-        // 从收藏中移除
-        favorites.splice(index, 1);
-        console.log('从收藏中移除:', currentAnimation);
-    }
+    console.log('init: 渲染导航栏');
+    renderNavigation();
+    console.log('init: 渲染导航栏完成');
+    console.log('init: 渲染后nav-menu元素:', document.getElementById('nav-menu'));
+    console.log('init: 渲染后nav-menu子元素数量:', document.getElementById('nav-menu')?.children?.length);
     
-    // 保存到本地存储
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-    console.log('收藏数据已保存到本地存储:', favorites);
+    console.log('init: 绑定事件');
+    bindEvents();
+    console.log('init: 绑定事件完成');
     
-    // 更新按钮状态
-    updateFavoriteButton();
+    console.log('init: 加载数据');
+    await loadData();
+    
+    console.log('init: 加载初始动画');
+    loadInitialAnimation();
+    
+    console.log('init: 初始化完成');
 }
-
-// 更新收藏按钮状态
-function updateFavoriteButton() {
-    console.log('更新收藏按钮状态');
-    const favoriteBtn = document.getElementById('favorite-btn');
-    if (currentAnimation && favorites.some(item => item.id === currentAnimation.id)) {
-        favoriteBtn.classList.add('favorited');
-        favoriteBtn.textContent = '取消收藏';
-        console.log('按钮状态: 已收藏');
-    } else {
-        favoriteBtn.classList.remove('favorited');
-        favoriteBtn.textContent = '收藏';
-        console.log('按钮状态: 未收藏');
-    }
-}
-
-// 复制到剪贴板函数
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert('链接已复制到剪贴板');
-    }).catch(err => {
-        console.error('复制失败:', err);
-        alert('复制失败，请手动复制链接');
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        init().catch(err => console.error('初始化失败:', err));
     });
+} else {
+    console.log('DOM已加载，立即执行init');
+    init().catch(err => console.error('初始化失败:', err));
 }
-
-// 页面加载完成后初始化
-window.addEventListener('DOMContentLoaded', init);

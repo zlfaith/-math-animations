@@ -119,6 +119,7 @@ body {
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .nav-menu .grade-link::before {
@@ -128,7 +129,7 @@ body {
 }
 
 .nav-menu .grade-link::after {
-    content: '▼';
+    content: '▶';
     margin-left: auto;
     font-size: 9px;
     color: #64748b;
@@ -140,10 +141,18 @@ body {
     padding-left: 20px;
 }
 
+.nav-menu .grade-link.active::after {
+    transform: rotate(90deg);
+}
+
 /* 学期样式 */
 .nav-menu .sub-menu {
     display: none;
     background-color: #f8fafc;
+}
+
+.nav-menu .sub-menu.show {
+    display: block;
 }
 
 .nav-menu .semester-link {
@@ -157,6 +166,7 @@ body {
     background: #ffffff;
     border-bottom: 1px solid #f1f5f9;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .nav-menu .semester-link::before {
@@ -166,10 +176,11 @@ body {
 }
 
 .nav-menu .semester-link::after {
-    content: '▼';
+    content: '▶';
     margin-left: auto;
     font-size: 8px;
     color: #94a3b8;
+    transition: transform 0.3s ease;
 }
 
 .nav-menu .semester-link:hover {
@@ -177,10 +188,18 @@ body {
     padding-left: 36px;
 }
 
+.nav-menu .semester-link.active::after {
+    transform: rotate(90deg);
+}
+
 /* 章节样式 */
 .nav-menu .sub-sub-menu {
     display: none;
     background-color: #ffffff;
+}
+
+.nav-menu .sub-sub-menu.show {
+    display: block;
 }
 
 .nav-menu .chapter-link {
@@ -195,6 +214,7 @@ body {
     border-left: 3px solid #3b82f6;
     border-bottom: 1px solid #f8fafc;
     transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .nav-menu .chapter-link::before {
@@ -204,10 +224,11 @@ body {
 }
 
 .nav-menu .chapter-link::after {
-    content: '▼';
+    content: '▶';
     margin-left: auto;
     font-size: 8px;
     color: #cbd5e1;
+    transition: transform 0.3s ease;
 }
 
 .nav-menu .chapter-link:hover {
@@ -216,11 +237,19 @@ body {
     padding-left: 52px;
 }
 
+.nav-menu .chapter-link.active::after {
+    transform: rotate(90deg);
+}
+
 /* 动画列表样式 */
 .nav-menu .animation-list {
     display: none;
     background-color: #f8fafc;
     padding: 4px 0;
+}
+
+.nav-menu .animation-list.show {
+    display: block;
 }
 
 .nav-menu .animation-link {

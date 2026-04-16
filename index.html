@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>初中数学交互动画</title>
-    <link rel="stylesheet" href="frontend/css/style.css">
+    <link rel="stylesheet" href="frontend/css/style.css?v=9">
 </head>
 <body>
     <div class="container">
@@ -43,15 +46,20 @@
             <div class="control-bar">
                 <button id="fullscreen-btn">全屏</button>
                 <button id="refresh-btn">刷新</button>
-                <button id="favorite-btn">收藏</button>
+                <button id="open-new-window-btn" style="display: none;">在新窗口打开</button>
             </div>
         </div>
     </div>
     
     <script src="https://www.geogebra.org/apps/deployggb.js"></script>
-    <script src="https://imgcache.qq.com/qcloud/tcbjs/1.11.2/tcb.js"></script>
-    <script>console.log('CloudBase SDK加载状态:', typeof tcb !== 'undefined' ? '已加载' : '未加载');</script>
-    <script src="frontend/js/notification.js"></script>
-    <script src="frontend/js/main.js"></script>
+    <script src="frontend/js/tcb.js"></script>
+    <script>
+        console.log('CDN SDK 加载后 - window.tcb:', typeof window.tcb);
+    </script>
+    <script src="frontend/js/notification.js?v=8"></script>
+    <script src="frontend/js/main.js?v=26"></script>
+    <script>
+        console.log('JavaScript 被执行了');
+    </script>
 </body>
 </html>

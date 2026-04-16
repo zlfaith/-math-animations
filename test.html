@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>测试页面</title>
+</head>
+<body>
+    <h1>CloudBase SDK 测试</h1>
+    <div id="result"></div>
+    
+    <!-- 使用jsdelivr CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tcb-js-sdk@1.10.10/dist/tcb.js"></script>
+    
+    <script>
+        const result = document.getElementById('result');
+        
+        console.log('测试开始...');
+        console.log('tcb类型:', typeof tcb);
+        
+        if (typeof tcb !== 'undefined') {
+            result.innerHTML = '<p style="color: green;">✓ CloudBase SDK 加载成功!</p>';
+            result.innerHTML += '<p>tcb.init: ' + typeof tcb.init + '</p>';
+            
+            try {
+                const app = tcb.init({
+                    env: 'math-animations-7ggh9q6lf3f13465'
+                });
+                result.innerHTML += '<p style="color: green;">✓ CloudBase 初始化成功!</p>';
+                
+                const db = app.database();
+                result.innerHTML += '<p style="color: green;">✓ 数据库初始化成功!</p>';
+                
+                const collection = db.collection('animations');
+                result.innerHTML += '<p style="color: green;">✓ 集合初始化成功!</p>';
+                
+                // 尝试读取数据
+                collection.get().then(res => {
+                    result.innerHTML += '<p style="color: green;">✓ 数据读取成功! 数量: ' + res.data.length + '</p>';
+                    console.log('数据:', res.data);
+                }).catch(err => {
+                    result.innerHTML += '<p style="color: red;">✗ 数据读取失败: ' + err.message + '</p>';
+                    console.error('读取错误:', err);
+                });
+                
+            } catch (e) {
+                result.innerHTML += '<p style="color: red;">✗ 初始化失败: ' + e.message + '</p>';
+                console.error('初始化错误:', e);
+            }
+        } else {
+            result.innerHTML = '<p style="color: red;">✗ CloudBase SDK 未加载!</p>';
+            console.error('SDK未加载');
+        }
+    </script>
+</body>
+</html>

@@ -1,194 +1,178 @@
-const CLOUDBASE_ENV = 'math-animations-2ga3njm77f3944eb';
-
 let animations = [];
 let filteredAnimations = [];
 let currentPage = 1;
 const itemsPerPage = 10;
 const DEFAULT_PASSWORD = '202486';
 
-let app = null;
 let db = null;
 let animationsCollection = null;
-let cloudBaseReady = false;
+let dbReady = false;
 
-async function initCloudBase() {
-    console.log('开始初始化 CloudBase...');
-    console.log('当前时间:', new Date().toLocaleString());
-    console.log('CLOUDBASE_ENV:', CLOUDBASE_ENV);
-    
-    if (cloudBaseReady) {
-        console.log('CloudBase 已经初始化');
+// 全局清除函数，可在浏览器控制台调用: clearIndexedDB()
+window.clearIndexedDB = async function() {
+    console.log('开始清除 IndexedDB 中的章节数据...');
+    try {
+        // 确保数据库已初始化
+        if (!dbReady) {
+            await initDB();
+        }
+        
+        if (!chaptersCollection) {
+            console.error('chaptersCollection 未初始化');
+            return false;
+        }
+        
+        // 获取所有章节数据
+        const result = await chaptersCollection.get();
+        console.log('当前章节数据:', result);
+        
+        if (result && result.data && Array.isArray(result.data)) {
+            // 删除所有文档
+            for (const doc of result.data) {
+                if (doc._id) {
+                    await chaptersCollection.doc(doc._id).remove();
+                    console.log('已删除文档:', doc._id);
+                }
+            }
+            console.log(`已删除 ${result.data.length} 个章节数据文档`);
+        }
+        
+        // 清除 localStorage
+        localStorage.removeItem('chapterData');
+        console.log('localStorage 中的 chapterData 已清除');
+        
+        // 重置内存中的数据
+        chapterData = {};
+        
+        console.log('✅ IndexedDB 章节数据清除完成！请刷新页面重新加载。');
         return true;
-    }
-
-    // 检查网络连接
-    if (navigator.onLine) {
-        console.log('网络连接状态: 在线');
-    } else {
-        console.error('网络连接状态: 离线');
+    } catch (error) {
+        console.error('❌ 清除 IndexedDB 失败:', error);
         return false;
     }
+};
 
-    // 等待 SDK 加载
-    let attempts = 0;
-    const maxAttempts = 50; // 最多等待 5 秒
-    console.log('等待 CloudBase SDK 加载...');
-
-    while (!(window.cloudbase || window.tcb) && attempts < maxAttempts) {
-        console.log('等待 SDK 加载中... 尝试次数:', attempts);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-    }
-
-    console.log('等待后 - window.tcb:', typeof window.tcb, window.tcb ? '已加载' : '未加载');
-    console.log('等待后 - window.cloudbase:', typeof window.cloudbase, window.cloudbase ? '已加载' : '未加载');
-    console.log('总尝试次数:', attempts);
-
-    const sdk = window.cloudbase || window.tcb;
-    if (!sdk) {
-        console.error('CloudBase SDK 未加载，请检查网络连接或SDK URL是否正确');
+// 全局清除函数，可在浏览器控制台调用: clearAllData()
+window.clearAllData = async function() {
+    console.log('开始清除所有 IndexedDB 数据（包括动画和章节）...');
+    try {
+        if (!dbReady) {
+            await initDB();
+        }
+        
+        // 清除章节数据
+        if (chaptersCollection) {
+            const chaptersResult = await chaptersCollection.get();
+            if (chaptersResult && chaptersResult.data) {
+                for (const doc of chaptersResult.data) {
+                    if (doc._id) await chaptersCollection.doc(doc._id).remove();
+                }
+                console.log(`已删除 ${chaptersResult.data.length} 个章节文档`);
+            }
+        }
+        
+        // 清除动画数据
+        if (animationsCollection) {
+            const animationsResult = await animationsCollection.get();
+            if (animationsResult && animationsResult.data) {
+                for (const doc of animationsResult.data) {
+                    if (doc._id) await animationsCollection.doc(doc._id).remove();
+                }
+                console.log(`已删除 ${animationsResult.data.length} 个动画文档`);
+            }
+        }
+        
+        // 清除 localStorage
+        localStorage.clear();
+        console.log('localStorage 已完全清除');
+        
+        console.log('✅ 所有数据清除完成！请刷新页面重新加载。');
+        return true;
+    } catch (error) {
+        console.error('❌ 清除数据失败:', error);
         return false;
+    }
+};
+
+async function initDB() {
+    console.log('开始初始化 IndexedDB...');
+
+    if (dbReady) {
+        console.log('IndexedDB 已经初始化');
+        return true;
     }
 
     try {
-        console.log('初始化 CloudBase 应用...');
-        app = sdk.init({
-            env: CLOUDBASE_ENV
-        });
-        console.log('CloudBase 应用初始化成功');
+        // 初始化 IndexedDB
+        if (window.indexedDBService) {
+            await window.indexedDBService.init();
+            db = window.indexedDBAPI;
 
-        console.log('获取认证对象...');
-        const auth = app.auth();
-        console.log('认证对象获取成功');
+            // 初始化默认数据
+            await window.indexedDBService.initDefaultData();
 
-        console.log('检查登录状态...');
-        let loginState;
-        try {
-            loginState = await auth.getLoginState();
-            console.log('登录状态检查成功:', loginState ? '已登录' : '未登录');
-        } catch (loginError) {
-            console.error('登录状态检查失败:', loginError);
-            return false;
-        }
+            // 获取集合
+            const database = db.database();
+            animationsCollection = database.collection('animations');
+            chaptersCollection = database.collection('chapters');
 
-        if (!loginState) {
-            console.log('执行匿名登录...');
-            try {
-                await auth.signInAnonymously();
-                console.log('匿名登录成功');
-            } catch (loginError) {
-                console.error('匿名登录失败:', loginError);
-                return false;
-            }
+            dbReady = true;
+            console.log('IndexedDB 初始化成功');
+            return true;
         } else {
-            console.log('已登录状态，无需重新登录');
-        }
-
-        console.log('获取登录状态...');
-        let state;
-        try {
-            state = await auth.getLoginState();
-            console.log('登录状态获取成功:', state);
-        } catch (stateError) {
-            console.error('登录状态获取失败:', stateError);
+            console.error('IndexedDB 服务未加载');
             return false;
         }
-
-        // CloudBase返回的登录状态对象结构是 {user: {uid: ...}}
-        if (state && state.user && state.user.uid) {
-            authUid = state.user.uid;
-            console.log('认证成功，用户 ID:', authUid);
-        } else if (state && state.uid) {
-            // 兼容旧版本SDK
-            authUid = state.uid;
-            console.log('认证成功，用户 ID:', authUid);
-        } else {
-            console.error('获取用户 UID 失败，登录状态对象:', state);
-            return false;
-        }
-
-        console.log('初始化数据库...');
-        try {
-            db = app.database();
-            console.log('数据库初始化成功:', db);
-        } catch (dbError) {
-            console.error('数据库初始化失败:', dbError);
-            return false;
-        }
-        
-        console.log('初始化 animations 集合...');
-        try {
-            animationsCollection = db.collection('animations');
-            console.log('animationsCollection 初始化成功:', animationsCollection);
-        } catch (collectionError) {
-            console.error('animationsCollection 初始化失败:', collectionError);
-            return false;
-        }
-        
-        console.log('初始化 chapters 集合...');
-        try {
-            chaptersCollection = db.collection('chapters');
-            console.log('chaptersCollection 初始化成功:', chaptersCollection);
-        } catch (collectionError) {
-            console.error('chaptersCollection 初始化失败:', collectionError);
-            return false;
-        }
-
-        cloudBaseReady = true;
-        console.log('CloudBase 初始化成功');
-        return true;
     } catch (error) {
-        console.error('CloudBase 初始化失败:', error);
-        console.error('错误详情:', error.message);
-        console.error('错误堆栈:', error.stack);
+        console.error('IndexedDB 初始化失败:', error);
         return false;
     }
 }
 
-async function loadAnimationsFromCloudBase() {
+async function loadAnimationsFromDB() {
     if (!animationsCollection) return false;
 
     try {
         const result = await animationsCollection.get();
-        if (result && result.data && Array.isArray(result.data)) {
+        if (result && Array.isArray(result.data)) {
             animations = result.data;
-            console.log('从 CloudBase 加载动画数据成功，数量:', animations.length);
+            console.log('从 IndexedDB 加载动画数据成功，数量:', animations.length);
             return true;
         }
         return false;
     } catch (error) {
-        console.error('从 CloudBase 加载动画数据失败:', error);
+        console.error('从 IndexedDB 加载动画数据失败:', error);
         return false;
     }
 }
 
-async function addAnimationToCloudBase(animationData) {
+async function addAnimationToDB(animationData) {
     if (!animationsCollection) return false;
 
     try {
         await animationsCollection.add(animationData);
-        console.log('添加动画到 CloudBase 成功');
+        console.log('添加动画到 IndexedDB 成功');
         return true;
     } catch (error) {
-        console.error('添加动画到 CloudBase 失败:', error);
+        console.error('添加动画到 IndexedDB 失败:', error);
         return false;
     }
 }
 
-async function updateAnimationInCloudBase(docId, animationData) {
+async function updateAnimationInDB(docId, animationData) {
     if (!animationsCollection) return false;
 
     try {
         await animationsCollection.doc(docId).update(animationData);
-        console.log('更新 CloudBase 动画成功');
+        console.log('更新 IndexedDB 动画成功');
         return true;
     } catch (error) {
-        console.error('更新 CloudBase 动画失败:', error);
+        console.error('更新 IndexedDB 动画失败:', error);
         return false;
     }
 }
 
-async function deleteAnimationFromCloudBase(docId) {
+async function deleteAnimationFromDB(docId) {
     if (!animationsCollection) {
         console.error('animationsCollection 未初始化');
         return false;
@@ -196,11 +180,11 @@ async function deleteAnimationFromCloudBase(docId) {
 
     try {
         console.log('开始删除动画，docId:', docId);
-        
+
         // 先获取所有动画数据
         const allAnimations = await animationsCollection.get();
         console.log('当前数据库中的所有动画:', allAnimations);
-        
+
         if (allAnimations && allAnimations.data) {
             console.log('找到', allAnimations.data.length, '个动画');
             for (const doc of allAnimations.data) {
@@ -210,7 +194,7 @@ async function deleteAnimationFromCloudBase(docId) {
                     console.log('找到匹配的文档，_id:', doc._id);
                     try {
                         await animationsCollection.doc(doc._id).remove();
-                        console.log('从 CloudBase 删除动画成功');
+                        console.log('从 IndexedDB 删除动画成功');
                         return true;
                     } catch (removeError) {
                         console.error('删除文档失败，_id:', doc._id, '错误:', removeError);
@@ -222,7 +206,7 @@ async function deleteAnimationFromCloudBase(docId) {
         console.log('未找到匹配的文档');
         return false;
     } catch (error) {
-        console.error('从 CloudBase 删除动画失败:', error);
+        console.error('从 IndexedDB 删除动画失败:', error);
         return false;
     }
 }
@@ -256,15 +240,15 @@ function bindEvents() {
 
     document.getElementById('grade').addEventListener('change', async function() {
         // 从数据库重新加载章节数据，确保章节下拉列表与数据库同步
-        if (cloudBaseReady) {
-            await loadChaptersFromCloudBase();
+        if (dbReady) {
+            await loadChaptersFromDB();
         }
         updateChapters();
     });
     document.getElementById('semester').addEventListener('change', async function() {
         // 从数据库重新加载章节数据，确保章节下拉列表与数据库同步
-        if (cloudBaseReady) {
-            await loadChaptersFromCloudBase();
+        if (dbReady) {
+            await loadChaptersFromDB();
         }
         updateChapters();
     });
@@ -315,8 +299,8 @@ async function updateFilterChapters() {
     const chapterSelect = document.getElementById('filter-chapter');
 
     // 从数据库重新加载章节数据，确保章节下拉列表与数据库同步
-    if (cloudBaseReady) {
-        await loadChaptersFromCloudBase();
+    if (dbReady) {
+        await loadChaptersFromDB();
     }
 
     chapterSelect.innerHTML = '<option value="">所有章节</option>';
@@ -341,28 +325,74 @@ async function openAddAnimationModal() {
     document.getElementById('other-chapter-group').style.display = 'none';
     document.getElementById('modal-title').textContent = '添加新动画';
     document.getElementById('animation-modal').style.display = 'block';
-    
+
     // 从数据库重新加载章节数据，确保章节下拉列表与数据库同步
-    if (cloudBaseReady) {
-        await loadChaptersFromCloudBase();
+    if (dbReady) {
+        await loadChaptersFromDB();
     }
-    
+
     // 更新章节下拉列表
     updateChapters();
 }
 
 async function openEditAnimationModal(id) {
-    const animation = animations.find(item => item._id === id || item.id === id);
+    console.log('openEditAnimationModal: 开始编辑, id:', id, '类型:', typeof id);
+    console.log('openEditAnimationModal: 当前动画数量:', animations.length);
+    console.log('openEditAnimationModal: 所有动画:', animations);
+    
+    // 尝试查找动画，同时比较字符串和数字形式的 id
+    const animation = animations.find(item => {
+        const itemId = item._id || item.id;
+        const match = itemId === id || String(itemId) === String(id) || itemId == id;
+        console.log('查找动画:', item.name, 'itemId:', itemId, '目标id:', id, '匹配:', match);
+        return match;
+    });
+    
     if (animation) {
+        console.log('openEditAnimationModal: 找到动画:', animation);
         document.getElementById('animation-id').value = animation._id || animation.id;
         document.getElementById('animation-name').value = animation.name;
         document.getElementById('animation-type').value = animation.type;
-        document.getElementById('grade').value = animation.grade;
-        document.getElementById('semester').value = animation.semester;
+
+        // 从 chapterId 解析年级、学期、章节号
+        let grade = '';
+        let semester = '';
+        let chapterName = '';
+
+        if (animation.chapterId) {
+            const parts = animation.chapterId.split('-');
+            if (parts.length >= 3) {
+                const gradeMap = { '1': '初一', '2': '初二', '3': '初三' };
+                const semesterMap = { '1': '上册', '2': '下册' };
+                grade = gradeMap[parts[0]] || '';
+                semester = semesterMap[parts[1]] || '';
+
+                // 从 chapterData 查找章节名称
+                if (grade && semester && chapterData[grade] && chapterData[grade][semester]) {
+                    const chapterNum = parseInt(parts[2]);
+                    const chapters = chapterData[grade][semester];
+                    const foundChapter = chapters.find(c => {
+                        const cName = typeof c === 'object' ? c.name : c;
+                        const match = cName.match(/第([一二三四五六七八九十百千]+)章/);
+                        if (match) {
+                            const num = chineseToNumber(match[1]);
+                            return num === chapterNum;
+                        }
+                        return false;
+                    });
+                    if (foundChapter) {
+                        chapterName = typeof foundChapter === 'object' ? foundChapter.name : foundChapter;
+                    }
+                }
+            }
+        }
+
+        document.getElementById('grade').value = grade || '其他';
+        document.getElementById('semester').value = semester || '其他';
 
         // 从数据库重新加载章节数据，确保章节下拉列表与数据库同步
-        if (cloudBaseReady) {
-            await loadChaptersFromCloudBase();
+        if (dbReady) {
+            await loadChaptersFromDB();
         }
 
         updateChapters();
@@ -371,17 +401,17 @@ async function openEditAnimationModal(id) {
         let chapterFound = false;
 
         for (let i = 0; i < chapterSelect.options.length; i++) {
-            if (chapterSelect.options[i].value === animation.chapter) {
-                chapterSelect.value = animation.chapter;
+            if (chapterSelect.options[i].value === chapterName) {
+                chapterSelect.value = chapterName;
                 chapterFound = true;
                 break;
             }
         }
 
-        if (!chapterFound) {
+        if (!chapterFound && chapterName) {
             chapterSelect.value = '其他';
             document.getElementById('other-chapter-group').style.display = 'block';
-            document.getElementById('other-chapter').value = animation.chapter;
+            document.getElementById('other-chapter').value = chapterName;
         } else {
             document.getElementById('other-chapter-group').style.display = 'none';
         }
@@ -484,9 +514,12 @@ async function saveAnimation() {
     let success = false;
 
     if (editDocId) {
-        const existing = animations.find(item => item._id === editDocId || item.id === editDocId);
+        const existing = animations.find(item => {
+            const itemId = item._id || item.id;
+            return String(itemId) === String(editDocId) || itemId == editDocId;
+        });
         if (existing && existing._id) {
-            success = await updateAnimationInCloudBase(existing._id, animationData);
+            success = await updateAnimationInDB(existing._id, animationData);
             if (success) {
                 const index = animations.findIndex(item => item._id === existing._id);
                 if (index !== -1) {
@@ -494,13 +527,13 @@ async function saveAnimation() {
                 }
             }
         } else {
-            success = await addAnimationToCloudBase(animationData);
+            success = await addAnimationToDB(animationData);
             if (success) {
                 animations.push(animationData);
             }
         }
     } else {
-        success = await addAnimationToCloudBase(animationData);
+        success = await addAnimationToDB(animationData);
         if (success) {
             animations.push(animationData);
         }
@@ -517,25 +550,84 @@ async function saveAnimation() {
     }
 }
 
-// 生成 chapterId，格式：年级-学期-章节索引（如 1-1-1 表示初一上册第一章）
+// 生成 chapterId，格式：年级-学期-章节号（如 1-1-1 表示初一上册第1章，2-2-21 表示初二下册第21章）
 function generateChapterId(grade, semester, chapter) {
     const gradeMap = { '初一': 1, '初二': 2, '初三': 3, '其他': 0 };
     const semesterMap = { '上册': 1, '下册': 2, '其他': 0 };
+
+    // 默认章节号为1
+    let chapterNum = 1;
     
-    // 查找章节在章节列表中的索引
-    let chapterIndex = 1;
-    if (grade !== '其他' && semester !== '其他' && chapterData[grade] && chapterData[grade][semester]) {
-        const chapters = chapterData[grade][semester];
-        const chapterIndexInList = chapters.findIndex(c => {
-            const chapterName = typeof c === 'object' ? c.name : c;
-            return chapterName === chapter;
-        });
-        if (chapterIndexInList !== -1) {
-            chapterIndex = chapterIndexInList + 1;
+    // 尝试从章节名称中提取章节号（如"第二十一章 四边形"提取 21）
+    const chapterNumMatch = chapter.match(/第([一二三四五六七八九十百千]+)章/);
+    if (chapterNumMatch) {
+        const chineseNum = chapterNumMatch[1];
+        chapterNum = chineseToNumber(chineseNum);
+    }
+
+    return `${gradeMap[grade]}-${semesterMap[semester]}-${chapterNum}`;
+}
+
+function chineseToNumber(chineseNum) {
+    const numMap = {
+        '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+        '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+        '十一': 11, '十二': 12, '十三': 13, '十四': 14, '十五': 15,
+        '十六': 16, '十七': 17, '十八': 18, '十九': 19, '二十': 20,
+        '二十一': 21, '二十二': 22, '二十三': 23, '二十四': 24, '二十五': 25,
+        '二十六': 26, '二十七': 27, '二十八': 28, '二十九': 29, '三十': 30,
+        '三十一': 31, '三十二': 32, '三十三': 33, '三十四': 34, '三十五': 35,
+        '三十六': 36, '三十七': 37, '三十八': 38, '三十九': 39, '四十': 40,
+        '四十一': 41, '四十二': 42, '四十三': 43, '四十四': 44, '四十五': 45,
+        '四十六': 46, '四十七': 47, '四十八': 48, '四十九': 49, '五十': 50,
+        '五十一': 51, '五十二': 52, '五十三': 53, '五十四': 54, '五十五': 55,
+        '五十六': 56, '五十七': 57, '五十八': 58, '五十九': 59, '六十': 60,
+        '六十一': 61, '六十二': 62, '六十三': 63, '六十四': 64, '六十五': 65,
+        '六十六': 66, '六十七': 67, '六十八': 68, '六十九': 69, '七十': 70,
+        '七十一': 71, '七十二': 72, '七十三': 73, '七十四': 74, '七十五': 75,
+        '七十六': 76, '七十七': 77, '七十八': 78, '七十九': 79, '八十': 80,
+        '八十一': 81, '八十二': 82, '八十三': 83, '八十四': 84, '八十五': 85,
+        '八十六': 86, '八十七': 87, '八十八': 88, '八十九': 89, '九十': 90,
+        '九十一': 91, '九十二': 92, '九十三': 93, '九十四': 94, '九十五': 95,
+        '九十六': 96, '九十七': 97, '九十八': 98, '九十九': 99, '一百': 100
+    };
+    
+    if (numMap[chineseNum]) {
+        return numMap[chineseNum];
+    }
+    
+    if (chineseNum.includes('十')) {
+        if (chineseNum.startsWith('二十')) {
+            const remainder = chineseNum.slice(2);
+            return 20 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('三十')) {
+            const remainder = chineseNum.slice(2);
+            return 30 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('四十')) {
+            const remainder = chineseNum.slice(2);
+            return 40 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('五十')) {
+            const remainder = chineseNum.slice(2);
+            return 50 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('六十')) {
+            const remainder = chineseNum.slice(2);
+            return 60 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('七十')) {
+            const remainder = chineseNum.slice(2);
+            return 70 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('八十')) {
+            const remainder = chineseNum.slice(2);
+            return 80 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('九十')) {
+            const remainder = chineseNum.slice(2);
+            return 90 + (numMap[remainder] || 0);
+        } else if (chineseNum.startsWith('十')) {
+            const remainder = chineseNum.slice(1);
+            return 10 + (numMap[remainder] || 0);
         }
     }
     
-    return `${gradeMap[grade]}-${semesterMap[semester]}-${chapterIndex}`;
+    return 1; // 默认返回1
 }
 
 // 生成动画ID，使用随机字符串
@@ -585,8 +677,8 @@ function renderAnimationList() {
             <td><a href="${animation.url}" target="_blank">${animation.url}</a></td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn btn-secondary" onclick="editAnimation('${docId}')">编辑</button>
-                    <button class="btn btn-danger" onclick="deleteAnimation('${docId}')">删除</button>
+                    <button class="btn btn-secondary edit-btn" data-id="${docId}">编辑</button>
+                    <button class="btn btn-danger delete-btn" data-id="${docId}">删除</button>
                 </div>
             </td>
         `;
@@ -595,6 +687,20 @@ function renderAnimationList() {
     table.appendChild(tbody);
 
     listContainer.appendChild(table);
+
+    // 使用事件委托绑定编辑和删除按钮
+    tbody.addEventListener('click', function(e) {
+        const target = e.target;
+        if (target.classList.contains('edit-btn')) {
+            const id = target.getAttribute('data-id');
+            console.log('编辑按钮点击, id:', id);
+            editAnimation(id);
+        } else if (target.classList.contains('delete-btn')) {
+            const id = target.getAttribute('data-id');
+            console.log('删除按钮点击, id:', id);
+            deleteAnimation(id);
+        }
+    });
 
     document.getElementById('select-all').addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('.animation-checkbox');
@@ -614,11 +720,11 @@ async function deleteAnimation(id) {
     if (await showConfirm('确定要删除这个动画吗？')) {
         try {
             // 从数据库中删除
-            const success = await deleteAnimationFromCloudBase(id);
-            
+            const success = await deleteAnimationFromDB(id);
+
             if (success) {
                 // 重新加载数据，确保前端显示的动画列表与数据库中的数据一致
-                await loadAnimationsFromCloudBase();
+                await loadAnimationsFromDB();
                 applyFilters();
                 renderAnimationList();
                 updateStats();
@@ -635,12 +741,61 @@ async function deleteAnimation(id) {
 function applyFilters() {
     const searchTerm = document.getElementById('search-input').value.toLowerCase();
     const type = document.getElementById('filter-type').value;
+    const grade = document.getElementById('filter-grade').value;
+    const semester = document.getElementById('filter-semester').value;
+    const chapter = document.getElementById('filter-chapter').value;
 
     filteredAnimations = animations.filter(animation => {
         const matchesSearch = animation.name.toLowerCase().includes(searchTerm);
         const matchesType = !type || animation.type === type;
+        
+        // 从 chapterId 解析年级、学期、章节
+        let matchesGrade = true;
+        let matchesSemester = true;
+        let matchesChapter = true;
+        
+        if (animation.chapterId && (grade || semester || chapter)) {
+            const parts = animation.chapterId.split('-');
+            if (parts.length >= 3) {
+                const gradeMap = { '1': '初一', '2': '初二', '3': '初三' };
+                const semesterMap = { '1': '上册', '2': '下册' };
+                
+                const animationGrade = gradeMap[parts[0]];
+                const animationSemester = semesterMap[parts[1]];
+                
+                // 从 chapterData 查找章节名称（现在 parts[2] 直接是章节号）
+                let animationChapter = '';
+                if (animationGrade && animationSemester && chapterData[animationGrade] && chapterData[animationGrade][animationSemester]) {
+                    const chapters = chapterData[animationGrade][animationSemester];
+                    const chapterNum = parseInt(parts[2]);
+                    // 在章节列表中查找对应章节号的章节
+                    const foundChapter = chapters.find(c => {
+                        const chapterName = typeof c === 'object' ? c.name : c;
+                        const match = chapterName.match(/第([一二三四五六七八九十百千]+)章/);
+                        if (match) {
+                            const num = chineseToNumber(match[1]);
+                            return num === chapterNum;
+                        }
+                        return false;
+                    });
+                    if (foundChapter) {
+                        animationChapter = typeof foundChapter === 'object' ? foundChapter.name : foundChapter;
+                    }
+                }
+                
+                if (grade) {
+                    matchesGrade = animationGrade === grade;
+                }
+                if (semester) {
+                    matchesSemester = animationSemester === semester;
+                }
+                if (chapter) {
+                    matchesChapter = animationChapter === chapter;
+                }
+            }
+        }
 
-        return matchesSearch && matchesType;
+        return matchesSearch && matchesType && matchesGrade && matchesSemester && matchesChapter;
     });
 
     currentPage = 1;
@@ -651,6 +806,9 @@ function applyFilters() {
 function resetFilters() {
     document.getElementById('search-input').value = '';
     document.getElementById('filter-type').value = '';
+    document.getElementById('filter-grade').value = '';
+    document.getElementById('filter-semester').value = '';
+    document.getElementById('filter-chapter').value = '';
 
     filteredAnimations = [...animations];
     currentPage = 1;
@@ -702,7 +860,7 @@ async function batchDelete() {
     if (await showConfirm(`确定要删除选中的 ${selectedIds.length} 个动画吗？`)) {
         let allSuccess = true;
         for (const id of selectedIds) {
-            const success = await deleteAnimationFromCloudBase(id);
+            const success = await deleteAnimationFromDB(id);
             if (!success) allSuccess = false;
         }
 
@@ -747,7 +905,7 @@ async function updateAnimationsData() {
         for (const existing of animations) {
             const stillExists = updatedAnimations.some(a => a.id === existing.id);
             if (!stillExists && existing._id) {
-                const success = await deleteAnimationFromCloudBase(existing._id);
+                const success = await deleteAnimationFromDB(existing._id);
                 if (!success) allSuccess = false;
             }
         }
@@ -755,15 +913,15 @@ async function updateAnimationsData() {
         for (const animationData of updatedAnimations) {
             const existing = animations.find(a => a.id === animationData.id);
             if (existing && existing._id) {
-                const success = await updateAnimationInCloudBase(existing._id, animationData);
+                const success = await updateAnimationInDB(existing._id, animationData);
                 if (!success) allSuccess = false;
             } else {
-                const success = await addAnimationToCloudBase(animationData);
+                const success = await addAnimationToDB(animationData);
                 if (!success) allSuccess = false;
             }
         }
 
-        await loadAnimationsFromCloudBase();
+        await loadAnimationsFromDB();
 
         filteredAnimations = [...animations];
         applyFilters();
@@ -783,12 +941,12 @@ async function updateAnimationsData() {
     }
 }
 
-async function loadChaptersFromCloudBase() {
+async function loadChaptersFromDB() {
     if (!chaptersCollection) return false;
 
     try {
         const result = await chaptersCollection.get();
-        if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+        if (result && Array.isArray(result.data) && result.data.length > 0) {
             const chapterDataFromDB = result.data[0];
             if (chapterDataFromDB.data) {
                 // 确保章节数据的格式正确，将对象转换为数组
@@ -800,7 +958,6 @@ async function loadChaptersFromCloudBase() {
                         for (const semester in gradeData) {
                             if (gradeData.hasOwnProperty(semester)) {
                                 const chapters = gradeData[semester];
-                                // 如果章节数据是对象，转换为数组
                                 if (typeof chapters === 'object' && chapters !== null && !Array.isArray(chapters)) {
                                     const chapterArray = [];
                                     for (const key in chapters) {
@@ -838,25 +995,25 @@ async function loadChaptersFromCloudBase() {
                     }
                 }
                 chapterData = normalizedData;
-                console.log('从 CloudBase 加载章节数据成功');
+                console.log('从 IndexedDB 加载章节数据成功');
                 return true;
             }
         }
         return false;
     } catch (error) {
-        console.error('从 CloudBase 加载章节数据失败:', error);
+        console.error('从 IndexedDB 加载章节数据失败:', error);
         return false;
     }
 }
 
-async function saveChaptersToCloudBase() {
+async function saveChaptersToDB() {
     // 保存到本地存储，以便调试
     localStorage.setItem('chapterData', JSON.stringify(chapterData));
     console.log('章节数据已保存到本地存储:', chapterData);
-    
+
     console.log('开始保存章节数据');
     console.log('chaptersCollection:', chaptersCollection);
-    
+
     if (!chaptersCollection) {
         console.error('chaptersCollection 未初始化');
         return false;
@@ -865,11 +1022,11 @@ async function saveChaptersToCloudBase() {
     try {
         // 确保章节数据的格式正确，并为每个章节生成章节 id
         const normalizedData = JSON.parse(JSON.stringify(chapterData));
-        
+
         // 为每个章节生成章节 id
         const gradeMap = { '初一': 1, '初二': 2, '初三': 3 };
         const semesterMap = { '上册': 1, '下册': 2 };
-        
+
         for (const grade in normalizedData) {
             if (normalizedData.hasOwnProperty(grade)) {
                 const gradeData = normalizedData[grade];
@@ -895,18 +1052,18 @@ async function saveChaptersToCloudBase() {
                 }
             }
         }
-        
+
         console.log('要保存的章节数据:', normalizedData);
-        
+
         console.log('尝试获取 chapters 集合中的数据');
         const result = await chaptersCollection.get();
         console.log('获取 chapters 集合结果:', result);
-        
+
         if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
             console.log('chapters 集合存在，更新现有文档');
             const docId = result.data[0]._id;
             console.log('更新文档 ID:', docId);
-            
+
             // 尝试更新文档
             try {
                 const updateResult = await chaptersCollection.doc(docId).update({ data: normalizedData });
@@ -926,10 +1083,10 @@ async function saveChaptersToCloudBase() {
             console.log('创建新文档结果:', addResult);
             console.log('创建新文档成功');
         }
-        console.log('章节数据保存到 CloudBase 成功');
+        console.log('章节数据保存到 IndexedDB 成功');
         return true;
     } catch (error) {
-        console.error('章节数据保存到 CloudBase 失败:', error);
+        console.error('章节数据保存到 IndexedDB 失败:', error);
         console.error('错误详情:', error.message);
         console.error('错误堆栈:', error.stack);
         return false;
@@ -938,12 +1095,12 @@ async function saveChaptersToCloudBase() {
 
 async function openChaptersModal() {
     document.getElementById('chapters-modal').style.display = 'block';
-    
+
     // 从数据库重新加载章节数据，确保显示的是最新的章节信息
-    if (cloudBaseReady) {
-        await loadChaptersFromCloudBase();
+    if (dbReady) {
+        await loadChaptersFromDB();
     }
-    
+
     renderChapterList();
 }
 
@@ -956,18 +1113,18 @@ function renderChapterList() {
     if (!chapterListElement) return;
 
     let html = '';
-    
+
     // 按年级和学期遍历章节
     for (const grade in chapterData) {
         if (chapterData.hasOwnProperty(grade)) {
             html += `<h4 style="margin-top: 20px; margin-bottom: 10px; color: #333;">${grade}</h4>`;
-            
+
             const semesters = chapterData[grade];
             for (const semester in semesters) {
                 if (semesters.hasOwnProperty(semester)) {
                     html += `<h5 style="margin-left: 20px; margin-bottom: 8px; color: #666;">${semester}</h5>`;
                     html += `<ul style="margin-left: 40px; list-style: none; padding: 0;">`;
-                    
+
                     const chapters = semesters[semester];
                     chapters.forEach((chapter, index) => {
                         // 处理对象格式的章节数据
@@ -980,13 +1137,13 @@ function renderChapterList() {
                         html += `</div>`;
                         html += `</li>`;
                     });
-                    
+
                     html += `</ul>`;
                 }
             }
         }
     }
-    
+
     chapterListElement.innerHTML = html;
 }
 
@@ -994,19 +1151,19 @@ async function addChapter() {
     const grade = document.getElementById('chapter-grade').value;
     const semester = document.getElementById('chapter-semester').value;
     const chapterName = document.getElementById('chapter-name').value.trim();
-    
+
     if (!chapterName) {
         showMessage('请输入章节名称', 'error');
         return;
     }
-    
-    // 确保CloudBase已初始化
+
+    // 确保IndexedDB已初始化
     if (!chaptersCollection) {
         showMessage('系统初始化失败，请刷新页面重试', 'error');
         console.error('chaptersCollection 未初始化');
         return;
     }
-    
+
     // 确保章节数据结构存在
     if (!chapterData[grade]) {
         chapterData[grade] = {};
@@ -1014,13 +1171,13 @@ async function addChapter() {
     if (!chapterData[grade][semester]) {
         chapterData[grade][semester] = [];
     }
-    
+
     // 添加章节
     chapterData[grade][semester].push(chapterName);
-    
-    // 保存到CloudBase
-    const success = await saveChaptersToCloudBase();
-    
+
+    // 保存到IndexedDB
+    const success = await saveChaptersToDB();
+
     if (success) {
         document.getElementById('chapter-name').value = '';
         renderChapterList();
@@ -1031,20 +1188,20 @@ async function addChapter() {
 }
 
 async function deleteChapter(grade, semester, index) {
-    // 确保CloudBase已初始化
+    // 确保IndexedDB已初始化
     if (!chaptersCollection) {
         showMessage('系统初始化失败，请刷新页面重试', 'error');
         console.error('chaptersCollection 未初始化');
         return;
     }
-    
+
     if (await showConfirm('确定要删除这个章节吗？')) {
         // 删除章节
         chapterData[grade][semester].splice(index, 1);
-        
-        // 保存到CloudBase
-        const success = await saveChaptersToCloudBase();
-        
+
+        // 保存到IndexedDB
+        const success = await saveChaptersToDB();
+
         if (success) {
             renderChapterList();
             showMessage('章节删除成功！');
@@ -1055,20 +1212,20 @@ async function deleteChapter(grade, semester, index) {
 }
 
 function editChapter(grade, semester, index, oldName) {
-    // 确保CloudBase已初始化
+    // 确保IndexedDB已初始化
     if (!chaptersCollection) {
         showMessage('系统初始化失败，请刷新页面重试', 'error');
         console.error('chaptersCollection 未初始化');
         return;
     }
-    
+
     const newName = prompt('请输入新的章节名称:', oldName);
     if (newName && newName.trim() !== '') {
         // 更新章节名称
         chapterData[grade][semester][index] = newName.trim();
-        
-        // 保存到CloudBase
-        saveChaptersToCloudBase().then(success => {
+
+        // 保存到IndexedDB
+        saveChaptersToDB().then(success => {
             if (success) {
                 renderChapterList();
                 showMessage('章节编辑成功！');
@@ -1087,19 +1244,32 @@ async function validatePassword() {
         document.getElementById('password-modal').style.display = 'none';
         document.querySelector('.admin-container').style.display = 'block';
 
-        console.log('开始初始化 CloudBase...');
-        const ready = await initCloudBase();
-        console.log('CloudBase 初始化结果:', ready);
-        
+        console.log('开始初始化 IndexedDB...');
+        let ready = false;
+        try {
+            ready = await initDB();
+        } catch (error) {
+            console.error('IndexedDB 初始化出错:', error);
+        }
+        console.log('IndexedDB 初始化结果:', ready);
+
         if (ready) {
             console.log('开始加载动画数据...');
-            const animationsLoaded = await loadAnimationsFromCloudBase();
-            console.log('动画数据加载结果:', animationsLoaded);
-            
+            try {
+                const animationsLoaded = await loadAnimationsFromDB();
+                console.log('动画数据加载结果:', animationsLoaded);
+            } catch (error) {
+                console.error('加载动画数据出错:', error);
+            }
+
             console.log('开始加载章节数据...');
-            const chaptersLoaded = await loadChaptersFromCloudBase();
-            console.log('章节数据加载结果:', chaptersLoaded);
-            console.log('当前章节数据:', chapterData);
+            try {
+                const chaptersLoaded = await loadChaptersFromDB();
+                console.log('章节数据加载结果:', chaptersLoaded);
+                console.log('当前章节数据:', chapterData);
+            } catch (error) {
+                console.error('加载章节数据出错:', error);
+            }
         }
 
         updateChapters();
@@ -1111,6 +1281,151 @@ async function validatePassword() {
         setTimeout(() => {
             errorElement.style.display = 'none';
         }, 3000);
+    }
+}
+
+// 修复所有动画的 chapterId
+async function fixChapterIds() {
+    if (animations.length === 0) {
+        showMessage('没有动画数据需要修复');
+        return;
+    }
+
+    console.log('开始修复 chapterId...');
+    console.log('当前动画数量:', animations.length);
+    console.log('当前章节数据:', chapterData);
+
+    let fixedCount = 0;
+
+    for (const animation of animations) {
+        console.log('处理动画:', animation.name, '当前 chapterId:', animation.chapterId);
+
+        // 从 URL 或名称推断年级、学期、章节
+        let grade = '';
+        let semester = '';
+        let chapter = '';
+
+        // 尝试从 URL 解析
+        if (animation.url) {
+            const urlMatch = animation.url.match(/animations\/(初一|初二|初三)\/(上册|下册)\/([^/]+)/);
+            if (urlMatch) {
+                grade = urlMatch[1];
+                semester = urlMatch[2];
+                chapter = urlMatch[3].replace(/_/g, ' ');
+            }
+        }
+
+        // 如果 URL 解析失败，尝试从 chapterId 解析
+        if (!grade && animation.chapterId) {
+            const parts = animation.chapterId.split('-');
+            if (parts.length >= 3) {
+                const gradeMap = { '1': '初一', '2': '初二', '3': '初三' };
+                const semesterMap = { '1': '上册', '2': '下册' };
+                grade = gradeMap[parts[0]];
+                semester = semesterMap[parts[1]];
+
+                // 从 chapterData 查找章节名称（现在 parts[2] 直接是章节号）
+                if (grade && semester && chapterData[grade] && chapterData[grade][semester]) {
+                    const chapterNum = parseInt(parts[2]);
+                    // 在章节列表中查找对应章节号的章节
+                    const chapters = chapterData[grade][semester];
+                    const foundChapter = chapters.find(c => {
+                        const chapterName = typeof c === 'object' ? c.name : c;
+                        const match = chapterName.match(/第([一二三四五六七八九十百千]+)章/);
+                        if (match) {
+                            const num = chineseToNumber(match[1]);
+                            return num === chapterNum;
+                        }
+                        return false;
+                    });
+                    if (foundChapter) {
+                        chapter = typeof foundChapter === 'object' ? foundChapter.name : foundChapter;
+                    }
+                }
+            }
+        }
+
+        if (!grade || !semester || !chapter) {
+            console.log('无法解析动画的年级/学期/章节:', animation.name);
+            continue;
+        }
+
+        // 生成正确的 chapterId（使用新的基于章节号的逻辑）
+        const newChapterId = generateChapterId(grade, semester, chapter);
+        console.log('生成新的 chapterId:', newChapterId, '年级:', grade, '学期:', semester, '章节:', chapter);
+
+        if (newChapterId !== animation.chapterId) {
+            // 更新动画数据
+            const updatedData = {
+                ...animation,
+                chapterId: newChapterId
+            };
+
+            try {
+                if (animation._id) {
+                    await updateAnimationInDB(animation._id, updatedData);
+                    // 更新本地数组
+                    const index = animations.findIndex(a => a._id === animation._id);
+                    if (index !== -1) {
+                        animations[index] = updatedData;
+                    }
+                }
+                fixedCount++;
+                console.log('已修复:', animation.name, '新 chapterId:', newChapterId);
+            } catch (error) {
+                console.error('修复失败:', animation.name, error);
+            }
+        }
+    }
+
+    // 重新渲染列表
+    filteredAnimations = [...animations];
+    renderAnimationList();
+    updateStats();
+
+    showMessage(`修复完成！共修复 ${fixedCount} 个动画的章节ID。`);
+    console.log('修复完成，共修复', fixedCount, '个动画');
+}
+
+// 清除章节数据缓存，让系统从代码重新加载默认数据
+async function clearChapterData() {
+    if (!await showConfirm('确定要清除章节数据缓存吗？这将删除数据库中存储的错误章节数据，系统会自动从代码加载正确的章节结构。')) {
+        return;
+    }
+
+    console.log('开始清除章节数据缓存...');
+
+    try {
+        if (!chaptersCollection) {
+            showMessage('数据库未初始化，请刷新页面后重试', 'error');
+            return;
+        }
+
+        // 获取所有章节数据文档
+        const result = await chaptersCollection.get();
+        
+        if (result && result.data && Array.isArray(result.data)) {
+            // 删除所有章节数据文档
+            for (const doc of result.data) {
+                if (doc._id) {
+                    await chaptersCollection.doc(doc._id).remove();
+                    console.log('已删除章节数据文档:', doc._id);
+                }
+            }
+        }
+
+        // 同时清除 localStorage 中的缓存
+        localStorage.removeItem('chapterData');
+        
+        // 重置内存中的章节数据为空对象，让系统重新初始化
+        chapterData = {};
+        
+        showMessage('章节数据缓存已清除！请刷新页面，系统会自动加载正确的章节数据。');
+        console.log('章节数据缓存清除成功');
+        
+    } catch (error) {
+        console.error('清除章节数据缓存时出错:', error);
+        showMessage('清除章节数据缓存时出错: ' + error.message, 'error');
     }
 }
 
@@ -1127,13 +1442,22 @@ function exportToExcel() {
                 const semesterMap = { '1': '上册', '2': '下册' };
                 grade = gradeMap[parts[0]] || '';
                 semester = semesterMap[parts[1]] || '';
-                // 从chapterData查找章节名称
+                // 从chapterData查找章节名称（现在 parts[2] 直接是章节号）
                 if (grade && semester && chapterData[grade] && chapterData[grade][semester]) {
                     const chapters = chapterData[grade][semester];
-                    const chapterIndex = parseInt(parts[2]) - 1;
-                    if (chapters && chapters[chapterIndex]) {
-                        const chapterItem = chapters[chapterIndex];
-                        chapter = typeof chapterItem === 'object' ? chapterItem.name : chapterItem;
+                    const chapterNum = parseInt(parts[2]);
+                    // 在章节列表中查找对应章节号的章节
+                    const foundChapter = chapters.find(c => {
+                        const chapterName = typeof c === 'object' ? c.name : c;
+                        const match = chapterName.match(/第([一二三四五六七八九十百千]+)章/);
+                        if (match) {
+                            const num = chineseToNumber(match[1]);
+                            return num === chapterNum;
+                        }
+                        return false;
+                    });
+                    if (foundChapter) {
+                        chapter = typeof foundChapter === 'object' ? foundChapter.name : foundChapter;
                     }
                 }
             }
@@ -1243,7 +1567,7 @@ async function importFromExcel() {
             const typeIndex = headers.indexOf('动画类型');
             const urlIndex = headers.indexOf('URL');
 
-            if (gradeIndex === -1 || semesterIndex === -1 || chapterIndex === -1 || 
+            if (gradeIndex === -1 || semesterIndex === -1 || chapterIndex === -1 ||
                 nameIndex === -1 || typeIndex === -1 || urlIndex === -1) {
                 showMessage('Excel文件格式不正确，请确保包含以下列：年级、学期、章节、动画名称、动画类型、URL', 'error');
                 return;
@@ -1290,9 +1614,9 @@ async function importFromExcel() {
                     chapterId: chapterId
                 };
 
-                // 保存到CloudBase
+                // 保存到IndexedDB
                 try {
-                    await addAnimationToCloudBase(animationData);
+                    await addAnimationToDB(animationData);
                     successCount++;
                 } catch (error) {
                     console.error('保存动画失败:', animationData, error);
@@ -1301,7 +1625,7 @@ async function importFromExcel() {
             }
 
             // 重新加载动画数据
-            await loadAnimationsFromCloudBase();
+            await loadAnimationsFromDB();
             filteredAnimations = [...animations];
             renderAnimationList();
             updateStats();

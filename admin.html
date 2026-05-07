@@ -459,6 +459,12 @@
                 <button class="btn btn-success" onclick="openImportExcelModal()">
                     📤 导入Excel
                 </button>
+                <button class="btn btn-warning" onclick="fixChapterIds()">
+                    🔧 修复章节ID
+                </button>
+                <button class="btn btn-danger" onclick="clearChapterData()">
+                    🗑️ 清除章节缓存
+                </button>
                 <a href="index.html" class="btn btn-secondary">
                     🏠 返回首页
                 </a>
@@ -649,7 +655,7 @@
 
     <!-- 引入SheetJS库用于Excel处理 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="frontend/js/tcb.js"></script>
+    <script src="frontend/js/db.js"></script>
     <script src="frontend/js/notification.js"></script>
     <script src="frontend/js/admin.js"></script>
 </body>

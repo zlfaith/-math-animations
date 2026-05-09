@@ -555,11 +555,9 @@ function generateChapterId(grade, semester, chapter) {
     const gradeMap = { '初一': 1, '初二': 2, '初三': 3, '其他': 0 };
     const semesterMap = { '上册': 1, '下册': 2, '其他': 0 };
 
-    // 默认章节号为1
     let chapterNum = 1;
     
-    // 尝试从章节名称中提取章节号（如"第二十一章 四边形"提取 21）
-    const chapterNumMatch = chapter.match(/第([一二三四五六七八九十百千]+)章/);
+    const chapterNumMatch = chapter.match(/第([零一二三四五六七八九十百千万]+)章/);
     if (chapterNumMatch) {
         const chineseNum = chapterNumMatch[1];
         chapterNum = chineseToNumber(chineseNum);

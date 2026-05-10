@@ -177,12 +177,15 @@ function loadAnimation(type, url, id) {
 
     switch (type) {
         case 'geogebra':
+        case 'ggb':
             loadGeoGebraApplet(url, container);
             break;
         case 'bilibili':
             loadBilibiliVideo(url, container);
             break;
         case 'iframe':
+        case 'external':
+        case 'html':
             loadIframeContent(url, container);
             break;
         default:

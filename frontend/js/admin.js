@@ -2,7 +2,6 @@ let animations = [];
 let filteredAnimations = [];
 let currentPage = 1;
 const itemsPerPage = 10;
-const DEFAULT_PASSWORD = '202486';
 
 let db = null;
 let animationsCollection = null;
@@ -217,16 +216,12 @@ let chapterData = {};
 // 章节数据集合
 let chaptersCollection = null;
 
-function init() {
+async function init() {
     bindEvents();
+    await validatePassword();
 }
 
 function bindEvents() {
-    document.getElementById('password-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        validatePassword();
-    });
-
     document.getElementById('animation-type').addEventListener('change', function() {
         const type = this.value;
         if (type === 'ggb' || type === 'external') {
@@ -1203,51 +1198,38 @@ function editChapter(grade, semester, index, oldName) {
 }
 
 async function validatePassword() {
-    const password = document.getElementById('password').value;
-    const errorElement = document.getElementById('password-error');
-
-    if (password === DEFAULT_PASSWORD) {
-        document.getElementById('password-modal').style.display = 'none';
-        document.querySelector('.admin-container').style.display = 'block';
-
-        console.log('开始初始化 IndexedDB...');
-        let ready = false;
-        try {
-            ready = await initDB();
-        } catch (error) {
-            console.error('IndexedDB 初始化出错:', error);
-        }
-        console.log('IndexedDB 初始化结果:', ready);
-
-        if (ready) {
-            console.log('开始加载动画数据...');
-            try {
-                const animationsLoaded = await loadAnimationsFromDB();
-                console.log('动画数据加载结果:', animationsLoaded);
-            } catch (error) {
-                console.error('加载动画数据出错:', error);
-            }
-
-            console.log('开始加载章节数据...');
-            try {
-                const chaptersLoaded = await loadChaptersFromDB();
-                console.log('章节数据加载结果:', chaptersLoaded);
-                console.log('当前章节数据:', chapterData);
-            } catch (error) {
-                console.error('加载章节数据出错:', error);
-            }
-        }
-
-        updateChapters();
-        filteredAnimations = [...animations];
-        updateStats();
-        renderAnimationList();
-    } else {
-        errorElement.style.display = 'block';
-        setTimeout(() => {
-            errorElement.style.display = 'none';
-        }, 3000);
+    console.log('开始初始化 IndexedDB...');
+    let ready = false;
+    try {
+        ready = await initDB();
+    } catch (error) {
+        console.error('IndexedDB 初始化出错:', error);
     }
+    console.log('IndexedDB 初始化结果:', ready);
+
+    if (ready) {
+        console.log('开始加载动画数据...');
+        try {
+            const animationsLoaded = await loadAnimationsFromDB();
+            console.log('动画数据加载结果:', animationsLoaded);
+        } catch (error) {
+            console.error('加载动画数据出错:', error);
+        }
+
+        console.log('开始加载章节数据...');
+        try {
+            const chaptersLoaded = await loadChaptersFromDB();
+            console.log('章节数据加载结果:', chaptersLoaded);
+            console.log('当前章节数据:', chapterData);
+        } catch (error) {
+            console.error('加载章节数据出错:', error);
+        }
+    }
+
+    updateChapters();
+    filteredAnimations = [...animations];
+    updateStats();
+    renderAnimationList();
 }
 
 // 修复所有动画的 chapterId

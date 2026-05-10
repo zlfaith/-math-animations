@@ -1004,6 +1004,14 @@ async function saveChaptersToDB() {
     localStorage.setItem('chapterData', JSON.stringify(chapterData));
     console.log('章节数据已保存到本地存储:', chapterData);
 
+    console.log('开始保存章节数据');
+    console.log('chaptersCollection:', chaptersCollection);
+
+    if (!chaptersCollection) {
+        console.error('chaptersCollection 未初始化');
+        return false;
+    }
+
     try {
         // 确保章节数据的格式正确，并为每个章节生成章节 id
         const normalizedData = JSON.parse(JSON.stringify(chapterData));
@@ -1040,20 +1048,44 @@ async function saveChaptersToDB() {
 
         console.log('要保存的章节数据:', normalizedData);
 
-        // 使用 IndexedDB 服务保存章节数据
-        const success = await window.indexedDBService.saveChapters(normalizedData);
-        
-        if (success) {
-            console.log('章节数据保存到 IndexedDB 成功');
-            return true;
+        console.log('尝试获取 chapters 集合中的数据');
+        const result = await chaptersCollection.get();
+        console.log('获取 chapters 集合结果:', result);
+
+        if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+            console.log('chapters 集合存在，更新现有文档');
+            const docId = result.data[0]._id;
+            console.log('更新文档 ID:', docId);
+
+            // 尝试更新文档
+            try {
+                const updateResult = await chaptersCollection.doc(docId).update({ data: normalizedData });
+                console.log('更新文档结果:', updateResult);
+                console.log('更新文档成功');
+            } catch (updateError) {
+                console.error('更新文档失败，尝试替换文档:', updateError);
+                // 如果更新失败，尝试删除后重新添加
+                await chaptersCollection.doc(docId).remove();
+                const addResult = await chaptersCollection.add({ data: normalizedData });
+                console.log('重新创建文档结果:', addResult);
+                console.log('重新创建文档成功');
+            }
         } else {
-            console.error('章节数据保存到 IndexedDB 失败');
-            return false;
+            console.log('chapters 集合不存在或为空，创建新文档');
+            const addResult = await chaptersCollection.add({ data: normalizedData });
+            console.log('创建新文档结果:', addResult);
+            console.log('创建新文档成功');
         }
+        console.log('章节数据保存到 IndexedDB 成功');
+        return true;
     } catch (error) {
-        console.error('保存章节数据失败:', error);
+        console.error('章节数据保存到 IndexedDB 失败:', error);
+        console.error('错误详情:', error.message);
+        console.error('错误堆栈:', error.stack);
         return false;
     }
+}
+
 async function openChaptersModal() {
     document.getElementById('chapters-modal').style.display = 'block';
 

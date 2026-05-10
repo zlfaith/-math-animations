@@ -545,17 +545,23 @@ async function saveAnimation() {
     }
 }
 
-// 生成 chapterId，格式：年级-学期-章节号（如 1-1-1 表示初一上册第1章，2-2-21 表示初二下册第21章）
+// 生成 chapterId，格式：年级-学期-索引（如 1-1-1 表示初一上册第1章，2-2-3 表示初二下册第3章）
 function generateChapterId(grade, semester, chapter) {
     const gradeMap = { '初一': 1, '初二': 2, '初三': 3, '其他': 0 };
     const semesterMap = { '上册': 1, '下册': 2, '其他': 0 };
 
     let chapterNum = 1;
     
-    const chapterNumMatch = chapter.match(/第([零一二三四五六七八九十百千万]+)章/);
-    if (chapterNumMatch) {
-        const chineseNum = chapterNumMatch[1];
-        chapterNum = chineseToNumber(chineseNum);
+    // 从 chapterData 中查找章节的索引
+    if (chapterData[grade] && chapterData[grade][semester]) {
+        const chapters = chapterData[grade][semester];
+        const index = chapters.findIndex(c => {
+            const chapterName = typeof c === 'object' ? c.name : c;
+            return chapterName === chapter;
+        });
+        if (index !== -1) {
+            chapterNum = index + 1;
+        }
     }
 
     return `${gradeMap[grade]}-${semesterMap[semester]}-${chapterNum}`;

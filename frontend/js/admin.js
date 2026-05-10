@@ -1028,15 +1028,8 @@ async function saveChaptersToDB() {
                         const chapters = gradeData[semester];
                         if (Array.isArray(chapters)) {
                             chapters.forEach((chapter, index) => {
-                                // 从章节名称中提取章节号（如"第五十章"提取50）
-                                const chapterName = typeof chapter === 'string' ? chapter : chapter.name;
-                                const chapterNumMatch = chapterName.match(/第([零一二三四五六七八九十百千万]+)章/);
-                                let chapterNum = index + 1; // 默认使用索引
-                                if (chapterNumMatch) {
-                                    const chineseNum = chapterNumMatch[1];
-                                    chapterNum = chineseToNumber(chineseNum);
-                                }
-                                const chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${chapterNum}`;
+                                // 按列表索引生成章节ID：年级-学期-索引(从1开始)
+                                const chapterId = `${gradeMap[grade]}-${semesterMap[semester]}-${index + 1}`;
                                 // 确保章节数据是对象，添加章节 id
                                 if (typeof chapter === 'string') {
                                     gradeData[semester][index] = {

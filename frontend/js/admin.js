@@ -172,38 +172,18 @@ async function updateAnimationInDB(docId, animationData) {
 }
 
 async function deleteAnimationFromDB(docId) {
-    if (!animationsCollection) {
-        console.error('animationsCollection 未初始化');
-        return false;
-    }
-
     try {
         console.log('开始删除动画，docId:', docId);
-
-        // 先获取所有动画数据
-        const allAnimations = await animationsCollection.get();
-        console.log('当前数据库中的所有动画:', allAnimations);
-
-        if (allAnimations && allAnimations.data) {
-            console.log('找到', allAnimations.data.length, '个动画');
-            for (const doc of allAnimations.data) {
-                console.log('检查动画:', doc);
-                console.log('doc.id:', doc.id, 'doc._id:', doc._id);
-                if (doc.id === docId || doc._id === docId) {
-                    console.log('找到匹配的文档，_id:', doc._id);
-                    try {
-                        await animationsCollection.doc(doc._id).remove();
-                        console.log('从 IndexedDB 删除动画成功');
-                        return true;
-                    } catch (removeError) {
-                        console.error('删除文档失败，_id:', doc._id, '错误:', removeError);
-                        return false;
-                    }
-                }
-            }
+        
+        const success = await window.indexedDBService.deleteAnimationById(docId);
+        
+        if (success) {
+            console.log('从 IndexedDB 删除动画成功');
+            return true;
+        } else {
+            console.log('从 IndexedDB 删除动画失败');
+            return false;
         }
-        console.log('未找到匹配的文档');
-        return false;
     } catch (error) {
         console.error('从 IndexedDB 删除动画失败:', error);
         return false;

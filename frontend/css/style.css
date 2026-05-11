@@ -410,6 +410,19 @@ body {
     content: '🔄';
 }
 
+.hint-text {
+    padding: 10px 18px;
+    font-size: 14px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+#open-new-window-btn::before {
+    content: '🌐';
+}
+
 #favorite-btn::before {
     content: '⭐';
 }

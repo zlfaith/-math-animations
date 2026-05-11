@@ -313,6 +313,11 @@ function bindEvents() {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', refreshAnimation);
     }
+
+    const openNewWindowBtn = document.getElementById('open-new-window-btn');
+    if (openNewWindowBtn) {
+        openNewWindowBtn.addEventListener('click', openAnimationInNewWindow);
+    }
 }
 
 function searchAnimations(term) {
@@ -340,6 +345,15 @@ function toggleFullscreen() {
     } else {
         document.exitFullscreen();
     }
+}
+
+function openAnimationInNewWindow() {
+    if (!currentAnimation || !currentAnimation.url) {
+        alert('请先选择一个动画');
+        return;
+    }
+    
+    window.open(currentAnimation.url, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
 }
 
 function refreshAnimation() {
@@ -491,6 +505,25 @@ async function init() {
     }
 
     await loadData();
+    
+    // 动态添加提示文字和显示新窗口按钮
+    const controlBar = document.querySelector('.control-bar');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const openNewWindowBtn = document.getElementById('open-new-window-btn');
+    
+    if (controlBar && refreshBtn && openNewWindowBtn) {
+        // 创建提示文字
+        const hintText = document.createElement('span');
+        hintText.className = 'hint-text';
+        hintText.textContent = '点击下方在新窗口打开';
+        
+        // 插入到刷新按钮后面
+        refreshBtn.parentNode.insertBefore(hintText, openNewWindowBtn);
+        
+        // 显示新窗口按钮
+        openNewWindowBtn.style.display = 'flex';
+    }
+    
     bindEvents();
     loadInitialAnimation();
     
